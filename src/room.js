@@ -1,6 +1,6 @@
 import { generateTheme, generateCard, generateBattle } from './ai.js';
 
-const STARS_TO_WIN = 5;
+const STARS_TO_WIN = 3;
 const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max);
 
 /*
@@ -9,7 +9,7 @@ const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').
  * phase: lobby(相手待ち) → theming(テーマ生成中) → naming(カード名入力)
  *        → judging(両者のカード生成中)
  *        → reveal(カード公開。読んでいる間にバトル生成。生成後「バトル開始」)
- *        → playing(両者が押した → ログ配信) → theming … → finished(5★)
+ *        → playing(両者が押した → ログ配信) → theming … → finished(3★)
  *
  * クライアント→サーバー
  *   {type:'join', pid, name} / {type:'submit', cardName} / {type:'start'} / {type:'rematch'}
@@ -86,7 +86,7 @@ export class Room {
       }
     } else {
       if (this.players.length >= 2) {
-        return this.send(ws, { type: 'error', code: 'full', message: 'この部屋は満員です' });
+        return this.send(ws, { type: 'error', code: 'full', message: 'この場は満員です' });
       }
       p = { pid, name, ws, stars: 0, cardName: null, card: null, cardPromise: null, started: false, rematch: false };
       this.players.push(p);
@@ -140,7 +140,7 @@ export class Room {
   async submit(p, rawName) {
     if (this.phase !== 'naming' || p.cardName) return;
     const name = clean(rawName, 20);
-    if (!name) return this.send(p.ws, { type: 'error', message: 'カード名を入力してください' });
+    if (!name) return this.send(p.ws, { type: 'error', message: '名乗りを入力してください' });
     p.cardName = name;
     p.cardPromise = generateCard(this.env, name, this.theme); // 内部でcatch済み
     this.broadcastState();
