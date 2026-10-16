@@ -4,19 +4,20 @@ const STARS_TO_WIN = 5;
 const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max);
 
 /*
- * 対戦部屋（Durable Object）。状態はメモリ上のみ（全員が切断して時間が経つと消える）
+ * 対戦部屋（Durable Object）。状態はメモリ上のみ
  *
  * phase: lobby(相手待ち) → theming(テーマ生成中) → naming(カード名入力)
- *        → judging(バトル生成中) → [結果送信] → theming … → finished(5☆)
+ *        → judging(両者のカード生成中)
+ *        → reveal(カード公開。読んでいる間にバトル生成。生成後「バトル開始」)
+ *        → playing(両者が押した → ログ配信) → theming … → finished(5★)
  *
  * クライアント→サーバー
- *   {type:'join', pid, name}   pid=端末ごとの固定ID（再接続用）
- *   {type:'submit', cardName}
- *   {type:'rematch'}
+ *   {type:'join', pid, name} / {type:'submit', cardName} / {type:'start'} / {type:'rematch'}
  * サーバー→クライアント
- *   {type:'state', phase, turn, theme, starsToWin, me:{name,stars,submitted,rematch}, opponent:{...,connected}|null, youWonGame}
- *   {type:'result', turn, theme, me:{cardName,card}, opponent:{cardName,card}, log:[...], youWon, stars:{me,opponent}, gameOver}
- *   {type:'error', message, code?}
+ *   {type:'state', phase, turn, theme, starsToWin, battleReady, cards(revealのみ),
+ *     me:{name,stars,submitted,started,rematch}, opponent:{...,connected}|null, youWonGame}
+ *   {type:'result', turn, theme, me, opponent, log:[{side:'me'|'opp'|'n', text}], youWon, stars, gameOver}
+ *   {type:'error', message, code?} / {type:'replaced'}
  */
 export class Room {
   constructor(state, env) {
@@ -27,6 +28,8 @@ export class Room {
     this.theme = null;
     this.pastThemes = [];
     this.battling = false;
+    this.battleReady = false;
+    this.pending = null;
     this.gameWinner = null;
   }
 
@@ -52,6 +55,7 @@ export class Room {
       const p = this.players.find((x) => x.ws === ws);
       if (!p) return;
       if (msg.type === 'submit') return await this.submit(p, msg.cardName);
+      if (msg.type === 'start') return await this.start(p);
       if (msg.type === 'rematch') return await this.rematch(p);
     } catch (err) {
       console.error(err);
@@ -73,7 +77,6 @@ export class Room {
     if (!pid) return;
     let p = this.players.find((x) => x.pid === pid);
     if (p) {
-      // 再接続
       const old = p.ws;
       p.ws = ws;
       p.name = name;
@@ -85,7 +88,7 @@ export class Room {
       if (this.players.length >= 2) {
         return this.send(ws, { type: 'error', code: 'full', message: 'この部屋は満員です' });
       }
-      p = { pid, name, ws, stars: 0, cardName: null, card: null, cardPromise: null, rematch: false };
+      p = { pid, name, ws, stars: 0, cardName: null, card: null, cardPromise: null, started: false, rematch: false };
       this.players.push(p);
     }
     this.broadcastState();
@@ -94,13 +97,18 @@ export class Room {
 
   stateFor(p) {
     const o = this.players.find((x) => x !== p);
+    const reveal = this.phase === 'reveal' && o;
     return {
       type: 'state',
       phase: this.phase,
       turn: this.turn,
       theme: this.theme,
       starsToWin: STARS_TO_WIN,
-      me: { name: p.name, stars: p.stars, submitted: !!p.cardName, rematch: p.rematch },
+      battleReady: this.battleReady,
+      cards: reveal
+        ? { me: { cardName: p.cardName, card: p.card }, opponent: { cardName: o.cardName, card: o.card } }
+        : null,
+      me: { name: p.name, stars: p.stars, submitted: !!p.cardName, started: p.started, rematch: p.rematch },
       opponent: o
         ? { name: o.name, stars: o.stars, submitted: !!o.cardName, rematch: o.rematch, connected: !!o.ws }
         : null,
@@ -117,7 +125,9 @@ export class Room {
     this.turn++;
     this.phase = 'theming';
     this.battling = false;
-    for (const p of this.players) { p.cardName = null; p.card = null; p.cardPromise = null; }
+    this.battleReady = false;
+    this.pending = null;
+    for (const p of this.players) { p.cardName = null; p.card = null; p.cardPromise = null; p.started = false; }
     this.broadcastState();
     this.theme = await generateTheme(this.env, this.pastThemes);
     this.pastThemes.push(this.theme);
@@ -126,19 +136,19 @@ export class Room {
     this.broadcastState();
   }
 
-  // ② カード名が決まった瞬間に、そのプレイヤーのカード生成を開始（相手を待たない）
+  // ② カード名が決まった瞬間に、そのプレイヤーのカード生成を開始
   async submit(p, rawName) {
     if (this.phase !== 'naming' || p.cardName) return;
     const name = clean(rawName, 20);
     if (!name) return this.send(p.ws, { type: 'error', message: 'カード名を入力してください' });
     p.cardName = name;
-    p.cardPromise = generateCard(this.env, name, this.theme); // 内部でcatch済みなので reject しない
+    p.cardPromise = generateCard(this.env, name, this.theme); // 内部でcatch済み
     this.broadcastState();
-    if (this.players.length === 2 && this.players.every((x) => x.cardName)) await this.battle();
+    if (this.players.length === 2 && this.players.every((x) => x.cardName)) await this.prepareBattle();
   }
 
-  // ③ 両者のカードが揃ったらバトル生成 → 同時公開
-  async battle() {
+  // 両者のカードが揃ったら公開し、読んでもらっている間にバトルを生成しておく
+  async prepareBattle() {
     if (this.battling) return;
     this.battling = true;
     this.phase = 'judging';
@@ -146,8 +156,11 @@ export class Room {
 
     const [a, b] = this.players;
     [a.card, b.card] = await Promise.all([a.cardPromise, b.cardPromise]);
+    this.phase = 'reveal';
+    this.battleReady = false;
+    this.broadcastState(); // カード公開
 
-    // 先頭/後攻の位置バイアスを避けるため、AとBの割り当てをランダムに入れ替える
+    // AとBの割り当てはランダム（位置バイアス対策）
     const swap = Math.random() < 0.5;
     const first = swap ? b : a;
     const second = swap ? a : b;
@@ -157,21 +170,41 @@ export class Room {
       { name: first.cardName, ...first.card },
       { name: second.cardName, ...second.card },
     );
+    this.pending = { res, first, second };
+    this.battleReady = true;
+    this.broadcastState(); // 「バトル開始」ボタンを出す
+  }
+
+  // 「バトル開始」ボタン。両者が押したら同時にログを配信
+  async start(p) {
+    if (this.phase !== 'reveal' || !this.battleReady || p.started) return;
+    p.started = true;
+    this.broadcastState();
+    if (this.players.length === 2 && this.players.every((x) => x.started)) await this.play();
+  }
+
+  async play() {
+    this.phase = 'playing';
+    const { res, first, second } = this.pending;
     const winner = res.winner === 'A' ? first : second;
     winner.stars++;
     const gameOver = winner.stars >= STARS_TO_WIN;
-    if (gameOver) { this.gameWinner = winner; }
+    if (gameOver) this.gameWinner = winner;
 
     for (const p of this.players) {
       if (!p.ws) continue;
       const o = this.players.find((x) => x !== p);
+      const log = res.log.map((l) => ({
+        side: l.who === 'N' ? 'n' : (l.who === 'A' ? first : second) === p ? 'me' : 'opp',
+        text: l.text,
+      }));
       this.send(p.ws, {
         type: 'result',
         turn: this.turn,
         theme: this.theme,
         me: { cardName: p.cardName, card: p.card },
         opponent: { cardName: o.cardName, card: o.card },
-        log: res.log,
+        log,
         youWon: winner === p,
         stars: { me: p.stars, opponent: o.stars },
         gameOver,
