@@ -77,7 +77,10 @@ export class Room {
       const old = p.ws;
       p.ws = ws;
       p.name = name;
-      try { old?.close(); } catch {}
+      if (old && old !== ws) {
+        this.send(old, { type: 'replaced' }); // 古い接続には再接続させない
+        try { old.close(); } catch {}
+      }
     } else {
       if (this.players.length >= 2) {
         return this.send(ws, { type: 'error', code: 'full', message: 'この部屋は満員です' });
