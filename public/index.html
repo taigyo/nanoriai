@@ -92,7 +92,8 @@ label{display:block;font-weight:700;margin:14px 0 4px}
 const $=s=>document.querySelector(s);
 const el=(t,a={},...k)=>{const e=document.createElement(t);for(const[x,v]of Object.entries(a)){if(v==null||v===false)continue;if(x==='class')e.className=v;else if(x.startsWith('on'))e.addEventListener(x.slice(2),v);else e.setAttribute(x,v)}e.append(...k.flat().filter(c=>c!=null));return e};
 const LS={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-const pid=LS.get('pid',null)||(()=>{const v=crypto.randomUUID();LS.set('pid',v);return v})();
+// 接続ID。タブごとに別（同じ端末の2タブを別人として扱うため）。再読み込みでは維持される
+const pid=(()=>{try{let v=sessionStorage.getItem('pid');if(!v){v=crypto.randomUUID();sessionStorage.setItem('pid',v)}return v}catch{return crypto.randomUUID()}})();
 const show=id=>['home','setup','battle','coll'].forEach(s=>$('#'+s).hidden=s!==id);
 const stage=(...k)=>$('#stage').replaceChildren(...k);
 const getName=()=>$('#name').value.trim()||'ななしさん';
@@ -125,7 +126,8 @@ function handle(m){
   if(m.type==='error'){
     if(m.code==='full'){leave();$('#setupErr').textContent=m.message;show('setup')}
     else $('#conn').textContent=m.message;
-  }else if(m.type==='state'){anim?pending=m:apply(m)}
+  }else if(m.type==='replaced'){leave();$('#setupErr').textContent='同じIDで別の接続があったため、このタブは切断されました';show('setup')}
+  else if(m.type==='state'){anim?pending=m:apply(m)}
   else if(m.type==='result')playResult(m);
 }
 
