@@ -1,0 +1,24 @@
+name = "nanoriai"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# 静的ファイル（フロント）。/ws/ 以外のリクエストはここから返る
+[assets]
+directory = "./public"
+
+# Workers AI
+[ai]
+binding = "AI"
+
+# 対戦部屋（1部屋＝1つのDurable Object）
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# 使うAIモデル。ここだけ変えれば差し替え可能
+MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"

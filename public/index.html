@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ナノリアイ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#cde7f5;--ink:#14213d;--paper:#fffdf4;--coral:#ff5c7a;--sun:#ffd23f;--mint:#6fd9b8;--mute:#5b6784;--disp:"Dela Gothic One","Zen Maru Gothic",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sky);color:var(--ink);font:500 16px/1.7 "Zen Maru Gothic",sans-serif;min-height:100vh}
+main{max-width:560px;margin:0 auto;padding:20px 16px 56px}
+[hidden]{display:none!important}
+h2{font:400 1.5rem/1.3 var(--disp);margin:8px 0 12px}
+button{font:inherit;font-weight:700;color:var(--ink);background:var(--sun);border:3px solid var(--ink);border-radius:999px;padding:9px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
+button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+button.pri{background:var(--coral)}button.ghost{background:var(--paper)}
+button:disabled{opacity:.5;cursor:default}
+button.sm{padding:3px 14px;font-size:.85rem;box-shadow:2px 2px 0 var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+input{font:inherit;width:100%;padding:10px 12px;border:3px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink)}
+label{display:block;font-weight:700;margin:14px 0 4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.logo{display:flex;justify-content:center;gap:6px;margin:32px 0 10px}
+.logo span{width:clamp(50px,15vw,74px);aspect-ratio:3/4;display:grid;place-items:center;font:400 clamp(1.7rem,8vw,2.7rem) var(--disp);border:3px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);background:var(--paper)}
+.logo span:nth-child(1){transform:rotate(-5deg)}.logo span:nth-child(2){background:var(--sun);transform:rotate(3deg)}.logo span:nth-child(3){background:var(--coral);transform:rotate(-2deg)}.logo span:nth-child(4){background:var(--mint);transform:rotate(4deg)}.logo span:nth-child(5){transform:rotate(-3deg)}
+.lead{text-align:center;margin:0 0 20px}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:12px;padding:14px;box-shadow:4px 4px 0 var(--ink);animation:flip .5s}
+.card.weak{background:#e8e5da;border-style:dashed}
+.card h3{margin:0 0 6px;font:400 1.2rem/1.4 var(--disp);overflow-wrap:anywhere}
+.card p{margin:0 0 10px;font-size:.92rem}
+.card .note{color:var(--mute);font-size:.8rem}
+.card .meta{color:var(--mute);font-size:.8rem;margin:8px 0 0}
+.params{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:0;font-size:.88rem}
+.params dt{color:var(--mute)}.params dd{margin:0;font-weight:700;text-align:right}
+.card.back{display:grid;place-items:center;min-height:110px;background:var(--coral);font:400 2.4rem var(--disp);animation:none}
+.who{font-weight:700;margin:14px 0 4px}
+.bars{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:.95rem}
+.bars div:last-child{text-align:right}
+.st{letter-spacing:.1em;font-size:1.1rem}
+.theme{background:var(--sun);border:3px solid var(--ink);padding:12px 16px;text-align:center;font:400 clamp(1.3rem,6vw,1.8rem)/1.4 var(--disp);transform:rotate(-1deg);margin:14px 0}
+.log{list-style:none;padding:0;margin:18px 0}
+.log li{background:var(--paper);border-left:6px solid var(--coral);padding:6px 12px;margin:6px 0;animation:in .3s}
+.verdict{font:400 1.5rem/1.4 var(--disp);text-align:center;padding:12px;border:3px solid var(--ink);background:var(--mint);margin:16px 0}
+.verdict.lose{background:var(--paper)}
+.code{font:400 2.4rem var(--disp);letter-spacing:.2em;text-align:center;margin:8px 0}
+.status{text-align:center;color:var(--mute);margin:16px 0}
+.grid{display:grid;gap:18px;margin-top:16px}
+.err{color:#b3123a;font-weight:700;min-height:1.7em}
+@keyframes flip{from{transform:rotateY(90deg)}to{transform:none}}
+@keyframes in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<main>
+<section id="home">
+  <div class="logo" aria-label="ナノリアイ"><span>ナ</span><span>ノ</span><span>リ</span><span>ア</span><span>イ</span></div>
+  <p class="lead">カードに名前をつけて、AIに勝負を決めてもらおう。<br>先に5つ★を集めた人の勝ち。</p>
+  <label for="name">なまえ</label>
+  <input id="name" maxlength="12" placeholder="ななしさん" autocomplete="off">
+  <div class="row"><button class="pri" id="goSetup">対戦する</button><button class="ghost" id="goColl">図鑑を見る</button></div>
+</section>
+
+<section id="setup" hidden>
+  <h2>対戦をはじめる</h2>
+  <div class="row"><button class="pri" id="create">部屋をつくる</button></div>
+  <label for="joinCode">友だちの部屋コードで入る</label>
+  <input id="joinCode" maxlength="8" placeholder="例: K7M2" autocomplete="off" style="text-transform:uppercase">
+  <div class="row"><button id="join">この部屋に入る</button><button class="ghost" id="setupBack">戻る</button></div>
+  <p class="err" id="setupErr" role="alert"></p>
+</section>
+
+<section id="battle" hidden>
+  <div class="bars"><div id="meBar"></div><div id="oppBar"></div></div>
+  <div id="theme" class="theme" hidden></div>
+  <div id="stage"></div>
+  <p class="status" id="conn" role="status"></p>
+  <div class="row"><button class="ghost sm" id="leave">部屋を出る</button></div>
+</section>
+
+<section id="coll" hidden>
+  <h2>図鑑</h2>
+  <div class="row"><button class="ghost" id="collBack">戻る</button></div>
+  <div class="grid" id="collList"></div>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const el=(t,a={},...k)=>{const e=document.createElement(t);for(const[x,v]of Object.entries(a)){if(v==null||v===false)continue;if(x==='class')e.className=v;else if(x.startsWith('on'))e.addEventListener(x.slice(2),v);else e.setAttribute(x,v)}e.append(...k.flat().filter(c=>c!=null));return e};
+const LS={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const pid=LS.get('pid',null)||(()=>{const v=crypto.randomUUID();LS.set('pid',v);return v})();
+const show=id=>['home','setup','battle','coll'].forEach(s=>$('#'+s).hidden=s!==id);
+const stage=(...k)=>$('#stage').replaceChildren(...k);
+const getName=()=>$('#name').value.trim()||'ななしさん';
+$('#name').value=LS.get('name','');
+$('#name').addEventListener('input',()=>LS.set('name',$('#name').value.trim()));
+
+/* ---- 画面遷移 ---- */
+$('#goSetup').onclick=()=>{$('#setupErr').textContent='';show('setup')};
+$('#setupBack').onclick=()=>show('home');
+$('#goColl').onclick=()=>{drawColl();show('coll')};
+$('#collBack').onclick=()=>show('home');
+$('#create').onclick=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';connect(Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join(''))};
+$('#join').onclick=()=>{const c=$('#joinCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length<4)return $('#setupErr').textContent='部屋コードは4文字以上で入力してください';connect(c)};
+$('#leave').onclick=()=>leave();
+const q=new URLSearchParams(location.search).get('room');
+if(q){$('#joinCode').value=q.toUpperCase();show('setup')}
+
+/* ---- 通信 ---- */
+let ws,code,S=null,pending=null,anim=false,skip=false,leaving=false,retry=0,myCard='';
+function connect(c){code=c;leaving=false;S=null;pending=null;anim=false;myCard='';$('#theme').hidden=true;drawBars();stage(el('p',{class:'status'},'接続しています…'));show('battle');open()}
+function open(){
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/'+code);
+  ws.onopen=()=>{retry=0;$('#conn').textContent='';send({type:'join',pid,name:getName()})};
+  ws.onmessage=e=>handle(JSON.parse(e.data));
+  ws.onclose=()=>{if(leaving)return;$('#conn').textContent='接続が切れました。再接続しています…';setTimeout(open,Math.min(1000*2**retry++,8000))};
+}
+const send=o=>ws&&ws.readyState===1&&ws.send(JSON.stringify(o));
+function leave(){leaving=true;ws&&ws.close();history.replaceState(null,'',location.pathname);show('home')}
+function handle(m){
+  if(m.type==='error'){
+    if(m.code==='full'){leave();$('#setupErr').textContent=m.message;show('setup')}
+    else $('#conn').textContent=m.message;
+  }else if(m.type==='state'){anim?pending=m:apply(m)}
+  else if(m.type==='result')playResult(m);
+}
+
+/* ---- 描画 ---- */
+const stars=(n,t)=>el('span',{class:'st','aria-label':`★${n}個`},'★'.repeat(n)+'☆'.repeat(t-n));
+function drawBars(me,opp,t=5){
+  $('#meBar').replaceChildren(...(me==null?[]:[el('div',{},S?S.me.name:'あなた'),stars(me,t)]));
+  $('#oppBar').replaceChildren(...(opp==null?[]:[el('div',{},S&&S.opponent?S.opponent.name:'あいて'),stars(opp,t)]));
+}
+function setTheme(t){const e=$('#theme');e.hidden=!t;e.textContent=t||''}
+const cardEl=(name,c,meta)=>el('article',{class:'card'+(c.weak?' weak':'')},
+  el('h3',{},name),el('p',{},c.description),
+  el('dl',{class:'params'},c.params.flatMap(p=>[el('dt',{},p.label),el('dd',{},p.value)])),
+  c.weak?el('p',{class:'note'},'AIが作れず、ふつうの何かになりました'):null,
+  meta?el('p',{class:'meta'},meta):null);
+let lastKey='';
+function apply(s){
+  S=s;
+  drawBars(s.me.stars,s.opponent?s.opponent.stars:0,s.starsToWin);
+  $('#conn').textContent=s.opponent&&!s.opponent.connected?`${s.opponent.name}の接続が切れています`:'';
+  const key=[s.phase,s.turn,s.me.submitted,s.me.rematch].join();
+  if(s.phase==='naming'||s.phase==='judging')setTheme(s.theme);else if(s.phase!=='finished')setTheme(null);
+  if(key===lastKey){const o=$('#oppStat');if(o)o.textContent=oppText(s);return}
+  lastKey=key;
+  if(s.phase==='lobby'){
+    const link=`${location.origin}/?room=${code}`;
+    const cp=el('button',{class:'ghost',onclick:async()=>{try{await navigator.clipboard.writeText(link);cp.textContent='コピーしました'}catch{cp.textContent=link}}},'招待リンクをコピー');
+    stage(el('p',{class:'status'},'部屋コードを友だちに伝えてください'),el('div',{class:'code'},code),el('div',{class:'row'},cp),el('p',{class:'status'},'相手を待っています…'));
+  }else if(s.phase==='theming'){
+    stage(el('p',{class:'status'},'お題を考えています…'));
+  }else if(s.phase==='naming'){
+    if(s.me.submitted){
+      stage(el('p',{class:'status'},`「${myCard}」を出しました。カードを生成中…`),el('p',{class:'status',id:'oppStat'},oppText(s)));
+    }else{
+      const inp=el('input',{id:'cardName',maxlength:'20',placeholder:'カード名（20文字まで）',autocomplete:'off'});
+      const go=()=>{const v=inp.value.trim();if(!v||btn.disabled)return;myCard=v;send({type:'submit',cardName:v});btn.disabled=true};
+      const btn=el('button',{class:'pri',onclick:go},'このカードで勝負');
+      inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go()});
+      stage(el('label',{for:'cardName'},'お題に合いそうなカード名をつけよう'),inp,el('div',{class:'row'},btn),el('p',{class:'status',id:'oppStat'},oppText(s)));
+      inp.focus();
+    }
+  }else if(s.phase==='judging'){
+    stage(el('div',{class:'grid'},el('div',{class:'card back'},'？'),el('div',{class:'card back'},'？')),el('p',{class:'status'},'AIがバトルを書いています…'));
+  }else if(s.phase==='finished'){
+    const w=s.youWonGame;
+    stage(el('div',{class:'verdict'+(w?'':' lose')},w?'ゲーム勝利！おめでとう':'ゲーム敗北…また挑戦しよう'),
+      el('div',{class:'row'},el('button',{class:'pri',disabled:s.me.rematch?'':null,onclick:()=>send({type:'rematch'})},s.me.rematch?'相手を待っています…':'もう一度遊ぶ'),el('button',{class:'ghost',onclick:leave},'ホームへ')));
+  }
+}
+const oppText=s=>s.opponent?(s.opponent.submitted?`${s.opponent.name}はカード名を決めました`:`${s.opponent.name}は考え中…`):'';
+
+const wait=ms=>new Promise(r=>{const t=Date.now(),i=setInterval(()=>{if(skip||Date.now()-t>=ms){clearInterval(i);r()}},80)});
+async function playResult(m){
+  anim=true;skip=false;lastKey='';
+  setTheme(m.theme);
+  const log=el('ol',{class:'log','aria-live':'polite'});
+  const sk=el('button',{class:'ghost sm',onclick:()=>skip=true},'スキップ');
+  const on=S?S.opponent.name:'あいて',mn=S?S.me.name:'あなた';
+  stage(el('p',{class:'who'},on),cardEl(m.opponent.cardName,m.opponent.card),el('p',{class:'who'},mn),cardEl(m.me.cardName,m.me.card),log,sk);
+  await wait(1500);
+  for(const t of m.log){log.append(el('li',{},t));await wait(1700)}
+  sk.remove();
+  stage(...[...$('#stage').children],el('div',{class:'verdict'+(m.youWon?'':' lose')},m.youWon?'あなたの勝ち！ ★ゲット':'あいての勝ち…'),
+    el('div',{class:'row'},el('button',{class:'pri',onclick:()=>{
+      anim=false;const p=pending;pending=null;
+      if(p)apply(p);else if(m.gameOver)apply({...S,phase:'finished',youWonGame:m.youWon,me:{...S.me,rematch:false}});else apply(S);
+    }},m.gameOver?'結果へ':'次のターンへ')));
+  drawBars(m.stars.me,m.stars.opponent);
+  saveCard(m);
+}
+
+/* ---- 図鑑（localStorage） ---- */
+function saveCard(m){
+  const c=m.me.card,all=LS.get('cards',[]);
+  all.unshift({id:Date.now()+Math.random().toString(36).slice(2,6),name:m.me.cardName,description:c.description,params:c.params,weak:!!c.weak,theme:m.theme,won:m.youWon});
+  LS.set('cards',all.slice(0,200));
+}
+function drawColl(){
+  const all=LS.get('cards',[]);
+  $('#collList').replaceChildren(...(all.length?all.map(c=>{
+    const e=cardEl(c.name,c,`お題「${c.theme}」で${c.won?'勝ち':'負け'}`);
+    e.append(el('button',{class:'ghost sm',onclick:()=>{LS.set('cards',LS.get('cards',[]).filter(x=>x.id!==c.id));drawColl()}},'削除'));
+    return e;
+  }):[el('p',{class:'status'},'まだカードがありません。対戦すると、ここに集まります。')]));
+}
+</script>
+</body>
+</html>
