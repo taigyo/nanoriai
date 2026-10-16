@@ -31,6 +31,7 @@ export class Room {
     this.battleReady = false;
     this.pending = null;
     this.gameWinner = null;
+    this.history = [];
   }
 
   async fetch() {
@@ -98,11 +99,13 @@ export class Room {
   stateFor(p) {
     const o = this.players.find((x) => x !== p);
     const reveal = this.phase === 'reveal' && o;
+    const hide = this.phase === 'naming' && this.turn % 2 === 0; // 偶数ターンはお題を隠して名乗らせる
     return {
       type: 'state',
       phase: this.phase,
       turn: this.turn,
-      theme: this.theme,
+      theme: hide ? null : this.theme,
+      themeHidden: hide,
       starsToWin: STARS_TO_WIN,
       battleReady: this.battleReady,
       cards: reveal
@@ -113,6 +116,9 @@ export class Room {
         ? { name: o.name, stars: o.stars, submitted: !!o.cardName, rematch: o.rematch, connected: !!o.ws }
         : null,
       youWonGame: this.phase === 'finished' ? this.gameWinner === p : null,
+      history: this.phase === 'finished'
+        ? this.history.map((h) => ({ turn: h.turn, theme: h.theme, me: h.names[p.pid], opp: o ? h.names[o.pid] : '', youWon: h.winner === p.pid }))
+        : null,
     };
   }
 
@@ -190,6 +196,12 @@ export class Room {
     winner.stars++;
     const gameOver = winner.stars >= STARS_TO_WIN;
     if (gameOver) this.gameWinner = winner;
+    this.history.push({
+      turn: this.turn,
+      theme: this.theme,
+      names: Object.fromEntries(this.players.map((x) => [x.pid, x.cardName])),
+      winner: winner.pid,
+    });
 
     for (const p of this.players) {
       if (!p.ws) continue;
@@ -227,6 +239,7 @@ export class Room {
       this.turn = 0;
       this.pastThemes = [];
       this.gameWinner = null;
+      this.history = [];
       await this.startTurn();
     } else {
       this.broadcastState();

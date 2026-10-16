@@ -48,15 +48,14 @@ const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 /* ① バトルテーマ生成 */
 const FALLBACK_THEMES = [
-  '身長対決！', 'どちらが優しいか？', 'どちらがおいしいか？', 'どちらが速いか？',
-  'どちらが怖いか？', 'どちらが高価か？', 'どちらが役に立つか？', 'どちらが眠れるか？',
-  'どちらが目立つか？', 'どちらが長生きか？', 'どちらがモテるか？',
+  '身長対決！', '優しさバトル！', '足の速さ勝負！', 'おいしさ対決！', '怖さバトル！', 'お金持ち勝負！',
+  '役に立つ度対決！', '眠りやすさバトル！', '目立ち度勝負！', '長生き対決！', 'モテ度バトル！',
 ];
 const HINTS = ['能力', '性格', '見た目', '食べ物', '日常生活', '感情', '自然現象', 'スポーツ', 'お金', '時間'];
 
 export async function generateTheme(env, past = []) {
   const user = `名乗り合いの勝負のお題を1つ作ってください。
-- 「身長対決！」「どちらが優しいか？」のような、短くて分かりやすいお題（20字以内）
+- 必ず「〇〇対決！」「〇〇バトル！」「〇〇勝負！」のどれかの形にする（例: 身長対決！ / 優しさバトル！ / 足の速さ勝負！）。20字以内
 - どんな名乗りが来ても比較できる、遊び心のあるお題
 - 今回のヒント: ${pick(HINTS)}
 - 最近使ったお題は避ける: ${past.length ? past.join(' / ') : 'なし'}
@@ -65,7 +64,7 @@ export async function generateTheme(env, past = []) {
     const t = str(d.theme, 30);
     // 英字などが3文字以上続く場合は外国語の混入とみなして作り直し
     if (/[A-Za-z\u00C0-\u024F\u0400-\u04FF]{3,}/.test(t)) return null;
-    return t.length >= 2 ? t : null;
+    return t.length >= 2 && /(対決|バトル|勝負)！$/.test(t) ? t : null;
   });
   if (r) return r;
   const rest = FALLBACK_THEMES.filter((t) => !past.includes(t));
@@ -109,48 +108,51 @@ function weakCard(name) {
 }
 
 /* ③ バトル内容と結果の生成
- * log の各要素: {who:'A'|'B'|'N', text}  A/B=各カードの行動・セリフ, N=審判・ナレーション */
+ * log の各要素: {who:'A'|'B'|'N', text}  A/B=各名乗りの行動, N=審判（天の声）のコメント */
 export async function generateBattle(env, theme, a, b) {
   const fmt = (tag, c) =>
-    `名乗り${tag}「${c.name}」\n正体: ${c.description}\nパラメータ: ${c.params.map((p) => `${p.label}=${p.value}`).join(' / ')}`;
-  const user = `お題「${theme}」で、2つの名乗りが対決します。
+    `【${tag}】名乗り「${c.name}」\n正体: ${c.description}\nパラメータ: ${c.params.map((p) => `${p.label}=${p.value}`).join(' / ')}`;
+  const user = `お題「${theme}」で、2つの名乗りが勝負します。
 
 ${fmt('A', a)}
 
 ${fmt('B', b)}
 
-名乗りの内容がお題にどれだけ沿っているかで勝敗を決めてください。
-- 引き分けなし。必ずAかBが勝つ
-- 強そうな名乗りが負けてもよい。意外な展開や皮肉な決着を歓迎する
-- log: 8〜15行の配列。各要素は {"who":"A","text":"..."} の形
-  - who: A=名乗りAの行動やセリフ、B=名乗りBの行動やセリフ、N=審判（天の声）の実況・ナレーション・状況説明
-  - 最初はN（バトル開始の実況）、最後もN（勝敗の宣言）。途中もNを全体の3割ほど混ぜ、AとBが交互になりすぎないよう自然に並べる
-  - textは60字以内。A/Bのtextで名乗りを呼ぶ時は「名乗った名前」で呼ぶ（A/Bとは書かない）
-出力形式: {"log":[{"who":"N","text":"..."},{"who":"A","text":"..."}],"winner":"A"}`;
+名乗りの内容がお題にどれだけ沿っているか、勝負中の行動の工夫や意外性で勝敗を決めてください。
+- 引き分けなし。必ずAかBが勝つ。強そうな名乗りが負けてもよい
+- log: 8〜14行の配列。各要素は {"who":"A","text":"..."} の形
+  - who: A=Aの行動、B=Bの行動、N=審判（天の声）のコメント
+  - A/Bのtextは、お題に沿った具体的な行動や展開を濃く描写する（40〜120字）。毎回どちらかが何かしら行動を起こし、勝負がどんどん動いていくこと
+  - 名乗りの自己紹介や、名乗るだけのセリフは書かない。いきなり勝負の行動から始める
+  - Nは必要な時だけ、たまに入れる（全体の1〜2割以下）。最後の1行だけは、勝敗の決め手に納得できる審判の判定コメント（N・120字以内）にする
+  - 文中でAやBとは書かず、必ず名乗った名前（例:「${a.name}」）で呼ぶ
+出力形式: {"log":[{"who":"A","text":"..."},{"who":"B","text":"..."}],"winner":"A"}`;
 
-  const r = await chatJson(env, user, { temperature: 0.9, max_tokens: 1100 }, (d) => {
+  // モデルが「名乗りA」「カードB」などと書いた場合に、実際の名前へ置き換える
+  const fix = (t) =>
+    t.replace(/(名乗り|カード|プレイヤー)\s*A/g, () => `「${a.name}」`).replace(/(名乗り|カード|プレイヤー)\s*B/g, () => `「${b.name}」`);
+
+  const r = await chatJson(env, user, { temperature: 0.9, max_tokens: 2200 }, (d) => {
     const winner = String(d.winner || '').trim().toUpperCase();
     if (winner !== 'A' && winner !== 'B') return null;
     if (!Array.isArray(d.log)) return null;
     const log = d.log
       .map((l) => {
-        if (typeof l === 'string') return { who: 'N', text: str(l, 100) };
+        if (typeof l === 'string') return { who: 'N', text: fix(str(l, 200)) };
         const who = String(l?.who || 'N').trim().toUpperCase();
-        return { who: who === 'A' || who === 'B' ? who : 'N', text: str(l?.text, 100) };
+        return { who: who === 'A' || who === 'B' ? who : 'N', text: fix(str(l?.text, 200)) };
       })
       .filter((l) => l.text)
-      .slice(0, 15);
+      .slice(0, 16);
     return log.length >= 4 ? { log, winner } : null;
   });
   if (r) return r;
   return {
     log: [
-      { who: 'N', text: `テーマ「${theme}」の勝負が始まった！` },
-      { who: 'A', text: `「${a.name}」がにらみを利かせる。` },
-      { who: 'B', text: `「${b.name}」も負けじと身構える。` },
+      { who: 'A', text: `「${a.name}」が先に動いた。お題「${theme}」にふさわしい構えで相手を見据える。` },
+      { who: 'B', text: `「${b.name}」も負けじと、堂々と真正面から迎え撃つ。` },
       { who: 'N', text: 'その時、審判のAIが居眠りを始めた。' },
-      { who: 'N', text: '目を覚ました審判は、運命のサイコロに判定をゆだねた。' },
-      { who: 'N', text: 'サイコロが転がり、勝敗が決まった！' },
+      { who: 'N', text: '目を覚ました審判は、運命のサイコロに判定をゆだねた。サイコロが転がり、勝敗が決まった！' },
     ],
     winner: Math.random() < 0.5 ? 'A' : 'B',
   };
