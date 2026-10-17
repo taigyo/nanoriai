@@ -165,17 +165,20 @@ label{display:block;margin:16px 0 6px}
 #vpop{position:fixed;bottom:64px;left:10px;z-index:20;width:min(240px,calc(100vw - 20px));padding:6px 16px;background:var(--paper);border:var(--line);border-radius:999px;box-shadow:4px 4px 0 var(--ink);animation:pop .25s var(--boing)}
 #vpop input{display:block}
 input[type=checkbox]{width:26px;height:26px;padding:0;margin:0;flex:none;accent-color:var(--pink)}
-.trk{display:flex;align-items:center;gap:10px;margin:4px 0;font-size:1.1rem;cursor:pointer}
+.trk{display:flex;align-items:center;gap:10px;margin:8px 0;padding:6px 8px 6px 14px;font-size:1.1rem;background:rgba(255,255,255,.7);border-radius:14px}
+.trkl{display:flex;align-items:center;gap:10px;flex:1;min-width:0;margin:0;cursor:pointer;overflow-wrap:anywhere}
+.trk button{flex:none}
 
 /* ---- BGMの音に合わせて動く要素 ----
    JS が BGM の音を解析して --beat（0〜1）を毎フレーム更新する。無音・音量0・読み込み前は 0。
-   背景の図形は 5個に1個だけ反応し、種類 .g=拡大 / .s=縮小 / .l=左へ / .r=右へ（JSが振り分け）。--k は個体ごとの強さ
+   背景の図形は 5個に1個だけ反応し、種類 .g=その場で拡大 / .s=その場で縮小 / .l=左へ流れる / .r=右へ流れる（JSが振り分け）。--k は個体ごとの強さ
+   ・拡大/縮小は <svg> に掛ける（外側の .sh に掛けると、上へ昇る動き（translateY）まで拡大率に引きずられて、動きながら拡大して見える）
+   ・左右は戻らない：JS が音の大きさを足し込んで --dx（px）を増やし続ける。図形が下から昇り直すたびに 0 へ戻す
    ロゴは5文字それぞれ別の --lb（時間差＋強さの段階はJSの LOGO_LAG / LOGO_MUL）
    他の要素を動かすときは「scale:calc(1 + var(--beat,0)*倍率)」を足すだけ（transform のアニメとは干渉しない） */
-#bg .sh.g{scale:calc(1 + var(--beat,0)*.5*var(--k,1))}
-#bg .sh.s{scale:calc(1 - var(--beat,0)*.35*var(--k,1))}
-#bg .sh.l{translate:calc(var(--beat,0)*-60px*var(--k,1)) 0}
-#bg .sh.r{translate:calc(var(--beat,0)*60px*var(--k,1)) 0}
+#bg .sh.g svg{scale:calc(1 + var(--beat,0)*.6*var(--k,1))}
+#bg .sh.s svg{scale:calc(1 - var(--beat,0)*.42*var(--k,1))}
+#bg .sh.l,#bg .sh.r{translate:calc(var(--dx,0)*1px) 0}
 .logo span{scale:calc(1 + var(--lb,0)*.1);translate:0 calc(var(--lb,0)*-6px)}
 .theme{scale:calc(1 + var(--beat,0)*.03)}
 
@@ -308,6 +311,7 @@ if(!LS.get('name',''))LS.set('name',rndName());
 const getName=()=>LS.get('name','')||'ななしさん';
 const stag=p=>[...p.children].forEach((c,i)=>c.style.setProperty('--i',i));
 const show=id=>{
+  if(id!=='settings')previewStop(); // 試聴中に設定画面を出たら止めて、BGMへ戻す
   ['home','settings','setup','battle','coll'].forEach(s=>$('#'+s).hidden=s!==id);
   if(id==='home')$('#homeName').textContent=getName();
   if(id==='settings'){$('#name').value=getName();$('#vol').value=LS.get('vol',VOL_DEF);$('#volNum').textContent=LS.get('vol',VOL_DEF);$('#seVol').value=LS.get('seVol',SE_VOL_DEF);$('#seNum').textContent=LS.get('seVol',SE_VOL_DEF)}
@@ -344,6 +348,7 @@ const rpick=a=>a[Math.floor(Math.random()*a.length)];
 let pc={};
 const pk=(k,a)=>{if(!(k in pc))pc[k]=Math.floor(Math.random()*a.length);return a[pc[k]]};
 
+const bgDrift=[]; // 左右へ流れ続ける図形 {el,dir,k,x}（x=いまのずれ量px）。更新は beatTick
 /* ---- 背景：丸・バツ・ドットなどが、くるくる回りながらゆっくり上へ昇る ---- */
 (()=>{
   const bg=$('#bg'),I='#282638';
@@ -361,18 +366,24 @@ const pk=(k,a)=>{if(!(k in pc))pc[k]=Math.floor(Math.random()*a.length);return a
     c=>[[30,30],[70,30],[30,70],[70,70]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="10" fill="${c}" stroke="${I}" stroke-width="6"/>`).join('') // 四つ点
   ];
   const r=(a,b)=>a+Math.random()*(b-a);
-  const KINDS=['g','s','l','r'];let ki=0;
+  const KINDS=['g','s','l','r'].sort(()=>Math.random()-.5);let ki=0; // 種類の割り当て順は毎回ランダム（スマホは図形が少ないので、4種のうち3種になる）
   const n=innerWidth<600?14:26;
   for(let i=0;i<n;i++){
     const rise=r(26,52),spin=r(5,15),size=r(30,78);
     const d=document.createElement('div');
     d.className='sh';
     d.style.cssText=`left:${r(-2,98).toFixed(1)}%;width:${size.toFixed(0)}px;height:${size.toFixed(0)}px;animation-duration:${rise.toFixed(1)}s;animation-delay:-${(Math.random()*rise).toFixed(1)}s`;
-    if(i%5===0){d.classList.add(KINDS[ki++%4]);d.style.setProperty('--k',r(.8,1.3).toFixed(2))} // 5個に1個だけBGMに反応（拡大・縮小・左・右を順に割り当て）
+    if(i%5===0){const kd=KINDS[ki++%4],k=+r(.8,1.3).toFixed(2);d.classList.add(kd);d.style.setProperty('--k',k);if(kd==='l'||kd==='r')bgDrift.push({el:d,dir:kd==='l'?-1:1,k,x:0})} // 5個に1個だけBGMに反応（拡大・縮小・左・右を順に割り当て）
     const color=COLORS[Math.floor(Math.random()*COLORS.length)];
     d.innerHTML=`<svg viewBox="0 0 100 100" style="animation-duration:${spin.toFixed(1)}s;animation-direction:${Math.random()<.5?'normal':'reverse'}">${SHAPES[i%SHAPES.length](color)}</svg>`;
     bg.append(d);
   }
+  // 図形が下から昇り直したら、横のずれも元に戻す（昇り直しのアニメ名は rise。回転の spin は無視）
+  bg.addEventListener('animationiteration',e=>{
+    if(e.animationName!=='rise')return;
+    const o=bgDrift.find(x=>x.el===e.target);
+    if(o){o.x=0;o.el.style.setProperty('--dx',0)}
+  });
 })();
 
 /* ================= サウンド =================
@@ -403,6 +414,7 @@ const BGM_LIST=[
 const bgmA=new Audio();bgmA.preload='auto';
 const bgmOff=()=>LS.get('bgmOff',[]); // チェックを外した曲のid（初期は空＝すべて選択）
 let bgmCur=null,bgmQ=[]; // 再生中の曲 / これから流す順番（シャッフル済み）
+let bgmPrev=null,bgmSnapV=null; // 試聴中の曲 / 試聴を始める前のBGMの状態
 function bgmPick(){
   const off=bgmOff(),sel=BGM_LIST.filter(t=>!off.includes(t.id));
   if(!sel.length)return null;
@@ -420,12 +432,54 @@ function bgmNext(){
   bgmCur=t;bgmA.src=`/bgm/${t.id}.mp3`;
   bgmA.play().catch(e=>{if(e&&e.name==='NotAllowedError')bgmOn=false}); // 自動再生が止められたときだけ、次の操作でやり直す
 }
-bgmA.onended=bgmNext;
+bgmA.onended=()=>bgmPrev?previewStop():bgmNext(); // 試聴が最後まで流れたときは、BGMに戻る
 function bgmSelChanged(){ // 設定画面でチェックを変えたとき
   const off=bgmOff();
   bgmQ=bgmQ.filter(t=>!off.includes(t.id));
+  if(bgmPrev)return; // 試聴中は、終わってから反映される
   if(bgmOn&&(!bgmCur||off.includes(bgmCur.id)))bgmNext(); // 流れている曲が外れた／無音だったときは次の曲へ
 }
+// いまの再生位置を覚える／覚えた状態から再開する（試聴の前後、アプリが裏に回る前後で使う）
+const bgmSnap=()=>({t:bgmCur,pos:bgmA.currentTime,on:bgmOn&&!!bgmCur&&!bgmA.paused});
+function bgmResume(sn){
+  if(!bgmOn){bgmA.pause();return}
+  if(sn&&sn.on&&sn.t&&!bgmOff().includes(sn.t.id)){ // 同じ曲を、止めた位置から続ける
+    bgmCur=sn.t;bgmA.src=`/bgm/${sn.t.id}.mp3`;
+    bgmA.addEventListener('loadedmetadata',()=>{try{bgmA.currentTime=sn.pos}catch{}},{once:true});
+    bgmA.play().catch(e=>{if(e&&e.name==='NotAllowedError')bgmOn=false});
+  }else bgmNext(); // その曲が外されていた・元々鳴っていなかったときは、通常どおり次の曲へ
+}
+/* 試聴：設定画面の ▶ で、その曲を流す（BGMは止まり、試聴が終わる／止めたら元のBGMに戻る） */
+function previewStart(t){
+  if(!bgmPrev)bgmSnapV=bgmSnap(); // 試聴から試聴へ切り替えても、最初の状態へ戻れる
+  bgmPrev=t;bgmA.src=`/bgm/${t.id}.mp3`;
+  bgmA.play().catch(e=>{if(e&&e.name==='NotAllowedError')previewStop()});
+  updatePreviewUI();
+}
+function previewStop(){
+  if(!bgmPrev)return;
+  const sn=bgmSnapV;bgmPrev=null;bgmSnapV=null;
+  updatePreviewUI();bgmResume(sn);
+}
+/* スマホ（タッチ端末）で他のアプリへ移る・画面を消すときは、BGMを止めて <audio> も空にする。
+   <audio> が曲を持ったままだと、iOS のコントロールセンターやロック画面に「再生中」の操作パネルが残り続けるため。戻ってきたら続きから再開。
+   PC のタブ切り替えでは止めない（止めたいときは true にする） */
+const BGM_STOP_IN_BACKGROUND=touch;
+let bgSnap=null;
+document.addEventListener('visibilitychange',()=>{
+  if(!BGM_STOP_IN_BACKGROUND)return;
+  if(document.hidden){
+    if(bgSnap)return;
+    bgSnap=bgmPrev?bgmSnapV:bgmSnap(); // 試聴中なら、試聴前の状態へ戻す前提で保存
+    bgmPrev=null;bgmSnapV=null;updatePreviewUI();
+    bgmA.pause();bgmA.removeAttribute('src');bgmA.load();
+    try{if('mediaSession' in navigator){navigator.mediaSession.playbackState='none';navigator.mediaSession.metadata=null}}catch{}
+  }else if(bgSnap){
+    const sn=bgSnap;bgSnap=null;
+    if(ac&&ac.state!=='running')ac.resume().catch(()=>{});
+    bgmResume(sn);
+  }
+});
 function bgmVol(){
   const v=clamp01(vol()*duck);
   if(graphOk)bgmGain.gain.setTargetAtTime(v,ac.currentTime,.05);
@@ -474,13 +528,26 @@ addEventListener('keydown',e=>{if(e.key==='Escape')vpopSet(false)});
 volUI();
 
 /* ---- 設定画面のBGM一覧（チェックした曲だけが流れる。0曲でも可） ---- */
+const prevBtns={};
+function updatePreviewUI(){
+  BGM_LIST.forEach(t=>{
+    const b=prevBtns[t.id];if(!b)return;
+    const on=!!bgmPrev&&bgmPrev.id===t.id;
+    b.textContent=on?'■ 停止':'▶ 試聴';b.setAttribute('aria-pressed',on);b.classList.toggle('pri',on);b.classList.toggle('ghost',!on);
+  });
+}
 function drawTracks(){
   const off=bgmOff();
-  $('#trkList').replaceChildren(...BGM_LIST.map(t=>el('label',{class:'trk'},
-    el('input',{type:'checkbox',checked:!off.includes(t.id),onchange:e=>{
-      const o=bgmOff().filter(x=>x!==t.id);if(!e.target.checked)o.push(t.id);
-      LS.set('bgmOff',o);bgmSelChanged();
-    }}),t.title)));
+  $('#trkList').replaceChildren(...BGM_LIST.map(t=>{
+    const b=el('button',{class:'ghost sm',type:'button','aria-label':`${t.title}を試聴`,onclick:()=>bgmPrev&&bgmPrev.id===t.id?previewStop():previewStart(t)},'▶ 試聴');
+    prevBtns[t.id]=b;
+    return el('div',{class:'trk'},
+      el('label',{class:'trkl'},el('input',{type:'checkbox',checked:!off.includes(t.id),onchange:e=>{
+        const o=bgmOff().filter(x=>x!==t.id);if(!e.target.checked)o.push(t.id);
+        LS.set('bgmOff',o);bgmSelChanged();
+      }}),t.title),b);
+  }));
+  updatePreviewUI();
 }
 const setAllTracks=on=>{LS.set('bgmOff',on?[]:BGM_LIST.map(t=>t.id));drawTracks();bgmSelChanged()};
 $('#trkAll').onclick=()=>setAllTracks(true);
@@ -543,10 +610,11 @@ addEventListener('pointerover',e=>{
 /* ---- BGMの音に合わせて動かす ----
    BGM（音量スライダー・読み上げ中の音量下げより手前）を解析して、0〜1 の --beat を毎フレーム更新する。
    「低音の大きさ」と「直近の平均より急に大きくなった分（ビート）」を混ぜ、曲ごとの音量差は自動で吸収する。
-   動きの調整: BEAT_HZ=見る音の高さの上限 / BEAT_SENS=反応の強さ / BEAT_MIX=ビート成分の割合
+   動きの調整: DRIFT_SPEED=左右へ流れる速さ / BEAT_HZ=見る音の高さの上限 / BEAT_SENS=反応の強さ / BEAT_MIX=ビート成分の割合
               BEAT_RISE=立ち上がり（大きいほど素早い）/ BEAT_FALL=余韻（1に近いほどゆっくり戻る）
    ロゴ: 5文字は LOGO_LAG（ミリ秒の遅れ）だけ遅れて、LOGO_MUL の強さで動く（左から右へ波が伝わり、だんだん強くなる） */
 const BEAT_HZ=300,BEAT_SENS=1.3,BEAT_MIX=.5,BEAT_RISE=.3,BEAT_FALL=.94;
+const DRIFT_SPEED=30,DRIFT_GATE=.15; // 左右へ流れる図形：音が大きいほど速く（最大 px/秒）。GATE 以下の小さな音では流れない
 const LOGO_LAG=[0,80,160,240,320],LOGO_MUL=[.5,.75,1,1.25,1.5];
 let fftBuf=null,beatBins=2,beatV=0,beatAvg=0,beatPeak=.1,beatT=0,beatSet=0;
 const beatH=[],logoEls=[...document.querySelectorAll('.logo span')],logoSet=logoEls.map(()=>0);
@@ -554,7 +622,7 @@ function beatTick(t){
   requestAnimationFrame(beatTick);
   const dt=Math.min(.1,(t-beatT)/1000)||.016;beatT=t;
   let x=0;
-  if(graphOk&&bgmOn&&bgmCur&&volPct>0&&ac.state==='running'){
+  if(graphOk&&bgmOn&&(bgmCur||bgmPrev)&&volPct>0&&ac.state==='running'){
     analyser.getByteFrequencyData(fftBuf);
     let s=0;for(let i=0;i<beatBins;i++)s+=fftBuf[i];
     const lv=s/beatBins/255;
@@ -566,6 +634,9 @@ function beatTick(t){
   }
   if(x>beatV)beatV+=(x-beatV)*(1-Math.pow(1-BEAT_RISE,dt*60)); // 立ち上がりも少しなめらかに
   else beatV*=Math.pow(BEAT_FALL,dt*60);                      // 下がりはゆっくり
+  // 左右へ流れる図形：音の大きさ分だけ一方向に進み続け、戻らない
+  const drive=Math.max(0,beatV-DRIFT_GATE);
+  if(drive>0)for(const o of bgDrift){o.x+=o.dir*drive*DRIFT_SPEED*o.k*dt;o.el.style.setProperty('--dx',o.x.toFixed(1))}
   const v=beatV<.01?0:beatV;
   if(v!==beatSet&&(v===0||Math.abs(v-beatSet)>.004)){beatSet=v;document.documentElement.style.setProperty('--beat',v.toFixed(3))}
   // ロゴ：過去の値を文字ごとに違う遅れで読み出す（ホーム画面を見ているときだけ）
