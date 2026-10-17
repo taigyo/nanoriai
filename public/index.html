@@ -162,7 +162,13 @@ label{display:block;margin:16px 0 6px}
 #speak{left:64px}
 #mute[aria-pressed=true]{background:var(--pink)}
 #speak[aria-pressed=true]{background:var(--lime)}
-@media(hover:none) and (pointer:coarse){#volBox{display:none}} /* タッチ端末は音量スライダーを隠す（端末の音量ボタンを使う） */
+/* ---- BGMの音に合わせて動く要素 ----
+   JS が BGM の音を解析して --beat（0〜1）を毎フレーム更新する。無音・ミュート中は 0。
+   動かしたい要素には「scale:calc(1 + var(--beat,0)*倍率)」を足すだけ（既存の transform アニメとは干渉しない）。
+   動きの強さは倍率（.35 など）で、反応のしかたは JS の BEAT_* 定数で調整できる */
+#bg svg{scale:calc(1 + var(--beat,0)*.35)}
+.logo span{scale:calc(1 + var(--beat,0)*.1)}
+.theme{scale:calc(1 + var(--beat,0)*.03)}
 
 /* ================= スマホ（幅600px以下）だけの調整。PC表示には影響しない ================= */
 @media(max-width:600px){
@@ -236,6 +242,10 @@ label{display:block;margin:16px 0 6px}
     <label for="vol">BGMの音量：<b id="volNum"></b></label>
     <input id="vol" type="range" min="0" max="100" step="5">
   </div>
+  <div id="seVolBox">
+    <label for="seVol">SE（効果音）の音量：<b id="seNum"></b></label>
+    <input id="seVol" type="range" min="0" max="100" step="5">
+  </div>
   <div class="row"><button class="ghost" id="rand">ランダムで決める</button><button class="pri" id="saveName">これでいく！</button></div>
 </section>
 
@@ -283,7 +293,7 @@ const stag=p=>[...p.children].forEach((c,i)=>c.style.setProperty('--i',i));
 const show=id=>{
   ['home','settings','setup','battle','coll'].forEach(s=>$('#'+s).hidden=s!==id);
   if(id==='home')$('#homeName').textContent=getName();
-  if(id==='settings'){$('#name').value=getName();$('#vol').value=LS.get('vol',15);$('#volNum').textContent=LS.get('vol',15)}
+  if(id==='settings'){$('#name').value=getName();$('#vol').value=LS.get('vol',VOL_DEF);$('#volNum').textContent=LS.get('vol',VOL_DEF);$('#seVol').value=LS.get('seVol',SE_VOL_DEF);$('#seNum').textContent=LS.get('seVol',SE_VOL_DEF)}
   stag($('#'+id));
 };
 const stage=(...k)=>{const s=$('#stage');s.replaceChildren(...k);stag(s)};
@@ -346,26 +356,145 @@ const pk=(k,a)=>{if(!(k in pc))pc[k]=Math.floor(Math.random()*a.length);return a
   }
 })();
 
+/* ================= サウンド =================
+   BGM・SE・音量調整・BGMの音の解析は、すべて Web Audio を通す。
+   BGM : <audio> → (解析用の分岐) / bgmGain → 出力     SE : デコード済みバッファ → グループ音量 → seGain → 出力
+   Web Audio が使えない端末では、BGM は従来どおり audio.volume で鳴らし、SE と音の解析だけが無効になる */
+const touch=matchMedia('(hover:none) and (pointer:coarse)').matches;
+// スマホ（タッチ端末）でもBGMの音量スライダーを出すか。Web Audio 経由なら iOS でも効く可能性があるが、実機で要確認。
+// 効かなかったら false に戻す（false の間はスマホのBGMは端末の音量ボタンまかせ＝従来どおり）
+const TOUCH_BGM_SLIDER=true;
+const bgmSlider=!touch||TOUCH_BGM_SLIDER;
+const VOL_DEF=touch?100:15,SE_VOL_DEF=60; // 音量の初期値（スマホは従来どおり100）
+$('#volBox').hidden=!bgmSlider;
+const clamp01=v=>Math.min(1,Math.max(0,v));
+const vol=()=>bgmSlider?clamp01(LS.get('vol',VOL_DEF)/100):1;
+let muted=!!LS.get('mute',false); // ミュートはBGMとSEの両方に効く
+let ac=null,bgmGain=null,seGain=null,analyser=null,graphOk=false,acTried=false;
+let bgmOn=false,duck=1; // duck: 読み上げ中はBGMを小さくする倍率
+
 /* ---- BGM（2曲を順番にループ。最初のクリックで開始） ---- */
 const bgm=['/bgm/bgm1.mp3','/bgm/bgm2.mp3'].map(u=>{const a=new Audio(u);a.preload='auto';return a});
-// タッチ端末（スマホ・タブレット）は音量スライダーを隠し、端末側の音量ボタンに任せる（iOSは audio.volume が効かないため）
-const touch=matchMedia('(hover:none) and (pointer:coarse)').matches;
-const vol=()=>touch?1:Math.min(1,Math.max(0,LS.get('vol',15)/100));
-let bgmOn=false,duck=1; // duck: 読み上げ中はBGMを小さくする倍率
-const bgmVol=()=>bgm.forEach(a=>a.volume=Math.min(1,vol()*duck));
+function bgmVol(){
+  const v=clamp01(vol()*duck);
+  if(graphOk)bgmGain.gain.setTargetAtTime(muted?0:v,ac.currentTime,.05);
+  else bgm.forEach(a=>{a.volume=v;a.muted=muted});
+}
 function bgmNext(i){
   bgm.forEach(x=>{x.onended=null;x.pause()}); // 他の曲・同じ曲の二重再生を防ぐ
   const a=bgm[i%bgm.length];a.currentTime=0;a.onended=()=>bgmNext(i+1);
   a.play().catch(()=>{bgmOn=false});
 }
-function bgmStart(){if(bgmOn)return;bgmOn=true;bgmVol();bgmNext(0)}
+// 最初の操作の中で AudioContext を作り、BGMの <audio> をつなぐ（失敗したら従来方式のまま）
+function audioInit(){
+  if(acTried)return;acTried=true;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    ac=new AC();
+    bgmGain=ac.createGain();seGain=ac.createGain();
+    analyser=ac.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.4;
+    const sink=ac.createGain();sink.gain.value=0; // 解析の分岐は音を出さない（確実に動かすため無音で出力につなぐ）
+    analyser.connect(sink);sink.connect(ac.destination);
+    bgmGain.connect(ac.destination);seGain.connect(ac.destination);
+    bgm.forEach(a=>{const s=ac.createMediaElementSource(a);s.connect(analyser);s.connect(bgmGain);a.volume=1;a.muted=false}); // 音量・ミュートは bgmGain 側で行う
+    fftBuf=new Uint8Array(analyser.frequencyBinCount);
+    beatBins=Math.max(2,Math.ceil(BEAT_HZ/(ac.sampleRate/analyser.fftSize)));
+    graphOk=true;
+    seVolApply();seDecode();
+  }catch(err){graphOk=false;console.warn('Web Audio を使えません',err)}
+}
+function audioUnlock(){
+  audioInit();
+  if(ac&&ac.state!=='running')ac.resume().catch(()=>{}); // スマホは操作のたびに、鳴る状態へ戻す
+}
+function bgmStart(){audioUnlock();if(bgmOn)return;bgmOn=true;bgmVol();bgmNext(0)}
 ['pointerdown','pointerup','touchend','click','keydown'].forEach(e=>addEventListener(e,bgmStart));
 bgmVol();
 // ミュート（設定は保存。再生は止めず無音にするだけなので、解除するとすぐ戻る）
-let muted=!!LS.get('mute',false);
-function applyMute(){bgm.forEach(a=>a.muted=muted);const b=$('#mute');b.textContent=muted?'🔇':'🔊';b.setAttribute('aria-pressed',muted)}
+function applyMute(){bgmVol();seVolApply();const b=$('#mute');b.textContent=muted?'🔇':'🔊';b.setAttribute('aria-pressed',muted);b.setAttribute('aria-label',muted?'サウンドのミュートを解除':'サウンドをミュート')}
 $('#mute').onclick=()=>{muted=!muted;LS.set('mute',muted);applyMute()};
 applyMute();
+
+/* ---- SE（効果音）----
+   public/se/ に置いたWAVを、鳴らす場面ごとのグループに分ける。複数あるグループは毎回ランダム（直前と同じ音は避ける）
+   SE_GAIN: グループごとの基本音量 / SE_ADJ: 録音レベルの差を直す個別の補正（1が補正なし） */
+const SE_FILES={
+  hover:['bubblehover1','bubblehover2','bubblehover3','bubblehover4'],
+  click:['bubblepop1','bubblepop2','bubblepop3','click1'],
+  round:['drum1','drum2','drum3','drum4'],
+  lose:['lose1','lose2'],
+  win:['win1','win2'],
+  slide:['slide1','slide2','woosh1','woosh2','woosh3','woosh4','woosh5']
+};
+const SE_GAIN={hover:.45,click:.7,round:1,lose:.8,win:1,slide:.9};
+const SE_ADJ={woosh5:2.5,drum2:1.25,win2:1.6};
+const seRaw={},seBuf={},seLast={};
+const seNames=Object.values(SE_FILES).flat();
+// 読み込みはページが落ち着いてから（BGMやフォントの邪魔をしない）。取得だけ先にして、デコードは AudioContext ができてから
+addEventListener('load',()=>setTimeout(()=>{
+  seNames.forEach(n=>{seRaw[n]=fetch(`/se/${n}.wav`).then(r=>r.ok?r.arrayBuffer():null).catch(()=>null)});
+  seDecode();
+},600));
+function seDecode(){
+  if(!ac)return;
+  seNames.forEach(n=>{
+    if(!seRaw[n]||seBuf[n])return;
+    seRaw[n].then(b=>b&&new Promise((ok,ng)=>ac.decodeAudioData(b.slice(0),ok,ng))).then(buf=>{if(buf)seBuf[n]=buf}).catch(()=>{});
+  });
+}
+function seVolApply(){if(graphOk)seGain.gain.value=muted?0:clamp01(LS.get('seVol',SE_VOL_DEF)/100)}
+function playSE(g){
+  if(!graphOk||muted||ac.state!=='running')return;
+  const ready=SE_FILES[g].filter(n=>seBuf[n]);
+  if(!ready.length)return;
+  let n=rpick(ready);
+  if(ready.length>1&&n===seLast[g])n=rpick(ready.filter(x=>x!==n)); // 同じ音が続かないように
+  seLast[g]=n;
+  const s=ac.createBufferSource(),gn=ac.createGain();
+  s.buffer=seBuf[n];gn.gain.value=(SE_GAIN[g]??1)*(SE_ADJ[n]??1);
+  s.connect(gn);gn.connect(seGain);
+  s.onended=()=>{s.disconnect();gn.disconnect()};
+  s.start();
+}
+// ボタン：クリック音はどのボタンでも鳴る（押した瞬間に disabled になるボタンもあるため、先に動く capture で拾う）
+addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b&&!b.disabled)playSE('click')},true);
+// ボタン：ホバー音はマウスのときだけ（スマホにホバーはない）。連続で鳴りすぎないよう間隔をあける
+let lastHover=0;
+addEventListener('pointerover',e=>{
+  if(e.pointerType!=='mouse')return;
+  const b=e.target.closest&&e.target.closest('button');
+  if(!b||b.disabled||b.contains(e.relatedTarget))return;
+  const t=performance.now();if(t-lastHover<80)return;lastHover=t;
+  playSE('hover');
+});
+
+/* ---- BGMの音に合わせて動かす ----
+   BGM（音量スライダー・ミュート・読み上げ中の音量下げより手前）を解析して、0〜1 の --beat を毎フレーム更新する。
+   「低音の大きさ」と「直近の平均より急に大きくなった分（ビート）」を混ぜ、曲ごとの音量差は自動で吸収する。
+   動きの調整: BEAT_HZ=見る音の高さの上限 / BEAT_SENS=反応の強さ / BEAT_DECAY=余韻（大きいほど長く残る）/ BEAT_MIX=ビート成分の割合 */
+const BEAT_HZ=300,BEAT_SENS=1.3,BEAT_DECAY=.88,BEAT_MIX=.6;
+let fftBuf=null,beatBins=2,beatV=0,beatAvg=0,beatPeak=.1,beatT=0,beatSet=0;
+function beatTick(t){
+  requestAnimationFrame(beatTick);
+  const dt=Math.min(.1,(t-beatT)/1000)||.016;beatT=t;
+  let x=0;
+  if(graphOk&&bgmOn&&!muted&&ac.state==='running'){
+    analyser.getByteFrequencyData(fftBuf);
+    let s=0;for(let i=0;i<beatBins;i++)s+=fftBuf[i];
+    const lv=s/beatBins/255;
+    beatAvg+=(lv-beatAvg)*Math.min(1,dt*2.5); // 約0.4秒でならした「いつもの大きさ」
+    beatPeak=Math.max(beatPeak*Math.pow(.998,dt*60),lv,.05); // 最近の最大値（ゆっくり下がる）
+    const level=lv/beatPeak;
+    const hit=Math.max(0,lv-beatAvg)/Math.max(.04,beatPeak-beatAvg);
+    x=clamp01((level*(1-BEAT_MIX)*.6+hit*BEAT_MIX)*BEAT_SENS);
+  }
+  beatV=x>beatV?x:beatV*Math.pow(BEAT_DECAY,dt*60); // 立ち上がりは即座に、下がりはなめらかに
+  const v=beatV<.01?0:beatV;
+  if(v!==beatSet&&(v===0||Math.abs(v-beatSet)>.01)){beatSet=v;document.documentElement.style.setProperty('--beat',v.toFixed(3))}
+}
+requestAnimationFrame(beatTick);
+
 // 名乗りの読み上げ（ブラウザ内蔵の音声合成。声は端末まかせ。設定は保存）
 const SPEAK_RATE_PC=2,SPEAK_RATE_TOUCH=1.4; // 読み上げ速度（1が標準）。スマホは速く聞こえるため別設定
 const speakRate=()=>touch?SPEAK_RATE_TOUCH:SPEAK_RATE_PC;
@@ -391,6 +520,8 @@ $('#goColl').onclick=()=>{drawColl();show('coll')};
 $('#collBack').onclick=()=>show('home');
 $('#goSettings').onclick=()=>show('settings');
 $('#vol').oninput=e=>{LS.set('vol',+e.target.value);$('#volNum').textContent=e.target.value;bgmVol()};
+$('#seVol').oninput=e=>{LS.set('seVol',+e.target.value);$('#seNum').textContent=e.target.value;seVolApply()};
+$('#seVol').onchange=()=>playSE('click'); // 手を離したときに試し聴き
 $('#rand').onclick=()=>{$('#name').value=rndName()};
 $('#saveName').onclick=()=>{LS.set('name',$('#name').value.trim()||rndName());show('home')};
 $('#create').onclick=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';connect(Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join(''))};
@@ -400,8 +531,9 @@ const q=new URLSearchParams(location.search).get('room');
 if(q){$('#joinCode').value=q.toUpperCase();show('setup')}else show('home');
 
 /* ---- 通信 ---- */
+let finSE=false,histTok=0;
 let ws,code,S=null,pending=null,anim=false,skip=false,leaving=false,retry=0,myCard='',builtKey='',names={me:'',opp:''},shown={me:0,opp:0},lastKey='';
-function connect(c){code=c;leaving=false;S=null;pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};showArena(false);$('#theme').hidden=true;$('#themeNote').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
+function connect(c){code=c;leaving=false;S=null;finSE=false;histTok++;drumKey='';pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};showArena(false);$('#theme').hidden=true;$('#themeNote').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
 function open(){
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/'+code);
   ws.onopen=()=>{retry=0;$('#conn').textContent='';send({type:'join',pid,name:getName()})};
@@ -409,7 +541,7 @@ function open(){
   ws.onclose=()=>{if(leaving)return;$('#conn').textContent=rpick(TXT.disconnected);setTimeout(open,Math.min(1000*2**retry++,8000))};
 }
 const send=o=>ws&&ws.readyState===1&&ws.send(JSON.stringify(o));
-function leave(){leaving=true;playTok++;stopReading();ws&&ws.close();history.replaceState(null,'',location.pathname);show('home')}
+function leave(){leaving=true;playTok++;histTok++;stopReading();ws&&ws.close();history.replaceState(null,'',location.pathname);show('home')}
 function handle(m){
   if(m.type==='error'){
     if(m.code==='full'){leave();$('#setupErr').textContent=m.message;show('setup')}
@@ -431,7 +563,15 @@ function drawBars(me,opp,t=3){
   $('#oppBar').replaceChildren(...(opp==null?[]:[el('div',{},o),stars(opp,t,shown.opp)]));
   if(me!=null){shown.me=me;shown.opp=opp}
 }
-function setTheme(t){const e=$('#theme');if(e.textContent!==(t||'')||e.hidden){e.hidden=!t;e.textContent=t||'';e.style.animation='none';e.offsetWidth;e.style.animation=''}}
+let drumKey='';
+function setTheme(t){
+  const e=$('#theme');
+  if(e.textContent!==(t||'')||e.hidden){
+    e.hidden=!t;e.textContent=t||'';e.style.animation='none';e.offsetWidth;e.style.animation='';
+    const k=(S?S.turn:0)+'|'+t;
+    if(t&&t!=='？？？'&&k!==drumKey){drumKey=k;playSE('round')} // 伏せ字（？？？）では鳴らさず、お題が明かされた瞬間に鳴らす
+  }
+}
 const nmEl=(name,c,meta)=>el('article',{class:'nm'+(c.weak?' weak':'')},
   el('h3',{},name),el('p',{},c.description),
   el('dl',{class:'params'},c.params.flatMap(p=>[el('dt',{},p.label),el('dd',{},p.value)])),
@@ -446,6 +586,8 @@ function apply(s){
   $('#conn').textContent=s.opponent&&!s.opponent.connected?`${s.opponent.name}の接続が切れています`:'';
   const key=[s.phase,s.turn,s.me.submitted,s.me.rematch,s.battleReady,s.me.started].join();
   if(s.phase!=='reveal'){showArena(false);builtKey='';stopReading()}
+  if(s.phase!=='finished'){finSE=false;histTok++}
+  if(s.phase==='lobby')drumKey='';
   const hid=s.phase==='naming'&&(s.themeHidden||!s.theme); // 伏せられているお題は「？？？」で表示
   if(hid)setTheme('？？？');else if(['naming','judging','reveal'].includes(s.phase))setTheme(s.theme);else setTheme(null);
   const tn=$('#themeNote');tn.hidden=!(hid&&!s.me.submitted);tn.textContent=tn.hidden?'':pk('hid'+s.turn,TXT.hiddenNote);
@@ -464,7 +606,7 @@ function apply(s){
       const inp=el('input',{id:'cardName',maxlength:'10',placeholder:'われこそは……（10文字まで）',autocomplete:'off','aria-label':'名乗り'});
       const go=()=>{const v=inp.value.trim();if(!v||btn.disabled)return;myCard=v;send({type:'submit',cardName:v});btn.disabled=true};
       const btn=el('button',{class:'pri',onclick:go},'名乗る！');
-      inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go()});
+      inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){if(inp.value.trim()&&!btn.disabled)playSE('click');go()}});
       stage(el('p',{class:'shout'},'名乗れ！'),el('p',{class:'status'},pk('guide'+s.turn,TXT.guide)),inp,el('div',{class:'row',style:'justify-content:center'},btn),el('p',{class:'status',id:'oppStat'},oppText(s)));
       inp.focus();
     }
@@ -480,6 +622,9 @@ function apply(s){
     stage(el('div',{class:'verdict'+(w?'':' lose')},pk(w?'finW':'finL',w?TXT.gameWin:TXT.gameLose)),hist,
       el('div',{class:'row',style:'justify-content:center'},el('button',{class:'pri',disabled:s.me.rematch?'':null,onclick:()=>send({type:'rematch'})},s.me.rematch?'相手を待っています…':'もう一度名乗り合う'),el('button',{class:'ghost',onclick:leave},'ホームへ')));
     $('#stage').style.setProperty('--n',(s.history||[]).length);
+    if(!finSE){finSE=true;playSE(w?'win':'lose')} // 再戦待ちで画面が作り直されても、勝敗の音は最初の1回だけ
+    const tk=++histTok; // 戦歴が1つずつ滑り込むタイミング（CSS：開始 .7s、間隔 .3s）に合わせる
+    (s.history||[]).forEach((_,i)=>setTimeout(()=>{if(tk===histTok)playSE('slide')},700+i*300));
   }
 }
 
@@ -574,6 +719,7 @@ function addMsg(l){
   const log=$('#log');
   const m=el('div',{class:'msg '+l.side},l.text);
   log.append(m);
+  if(l.side==='me'||l.side==='opp')playSE('slide'); // 左右から滑ってくる行だけ（ナレーションも鳴らすなら条件を外す）
   const pad=parseFloat(getComputedStyle(log).paddingBottom)||0;
   if(m.offsetHeight>log.clientHeight-pad*2){ // 表示領域より長い行（スマホ）：頭から読めるように合わせ、少し後に末尾へ流す
     log.scrollTop=log.scrollHeight-pad*2-m.offsetHeight;
