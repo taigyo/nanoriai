@@ -18,7 +18,7 @@ main{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding:20px 16p
 :focus-visible{outline:var(--line);outline-offset:3px}
 
 /* ---- 縁取りは太いフォント（Dela Gothic One）の文字だけ。本文（Zen Maru Gothic）には付けない ---- */
-h2,.nm h3,.logo span,.theme,.verdict,.shout,.code{-webkit-text-stroke:.1em #fff;paint-order:stroke fill}
+h2,.nm h3,.logo span,.theme,.verdict,.shout,.code,.vsn{-webkit-text-stroke:.1em #fff;paint-order:stroke fill}
 .shout,.code{color:#fff;-webkit-text-stroke:.14em var(--ink);filter:drop-shadow(4px 4px 0 var(--pink));text-align:center} /* 影は文字全体にかかる drop-shadow（縁取りとの前後関係がブラウザで変わらない） */
 .st,.wait::before{-webkit-text-stroke:.14em var(--ink);paint-order:stroke fill} /* 記号（★と●）は色が淡いので墨フチ */
 
@@ -142,10 +142,27 @@ label{display:block;margin:16px 0 6px}
 .grid>.nm:nth-child(even){--rot:12deg}
 .grid.still>.nm{animation:none}
 
+/* ---- 睨み合い（VS）：名乗りが出そろってから、バトルが始まるまで ----
+   .vs の中身 = .vsn.me（自分の名乗り）/ .vsx（VS）/ .vsn.opp（相手の名乗り）
+   読んでいる側は .on、もう片方は .dim になる。待ち時間の調整は JS の READ_BASE / READ_PER_CHAR */
+@keyframes glareL{0%,100%{transform:translateX(0) rotate(-1.5deg)}50%{transform:translateX(12px) rotate(1deg)}}
+@keyframes glareR{0%,100%{transform:translateX(0) rotate(1.5deg)}50%{transform:translateX(-12px) rotate(-1deg)}}
+.vs{height:min(64vh,560px);display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:6px;padding:12px;background:rgba(255,255,255,.4);border:var(--line);border-radius:20px}
+.vsn{padding:12px 16px;border:var(--line);border-radius:24px;text-align:center;font:400 clamp(1.7rem,4.6vw,2.7rem)/1.3 var(--disp);overflow-wrap:anywhere;box-shadow:5px 5px 0 var(--ink);transition:opacity .35s}
+.vsn.me{background:var(--lime);margin-right:12%;animation:slideL .65s var(--boing) backwards,glareL 1.7s ease-in-out .9s infinite}
+.vsn.opp{background:var(--pink);margin-left:12%;animation:slideR .65s var(--boing) .15s backwards,glareR 1.7s ease-in-out 1.05s infinite}
+.vsx{align-self:center;color:#fff;font:400 clamp(3.4rem,11vw,5.6rem)/1 var(--disp);-webkit-text-stroke:.14em var(--ink);paint-order:stroke fill;filter:drop-shadow(4px 4px 0 var(--pink));animation:don .8s .4s backwards}
+.vsn.dim{opacity:.4}
+.nm{transition:transform .35s var(--boing),opacity .35s,box-shadow .35s}
+.arena .nm.focus{transform:scale(1.04) rotate(-1deg);box-shadow:8px 8px 0 var(--ink)}
+.arena .nm.dim{opacity:.55;transform:scale(.97)}
+@media(prefers-reduced-motion:reduce){.vsn.me,.vsn.opp{animation:none}.arena .nm.focus{transform:none}}
 @media(max-width:900px){.arena{grid-template-columns:1fr 1fr}.chatwrap{grid-column:1/-1;order:3}}
 /* ---- ミュートボタン（PC・スマホとも右上に常時固定） ---- */
-#mute{position:fixed;bottom:10px;left:10px;z-index:20;width:44px;height:44px;min-height:0;padding:0;display:grid;place-items:center;font-size:1.3rem;line-height:1;border-radius:50%;background:var(--paper);box-shadow:3px 3px 0 var(--ink)}
+#mute,#speak{position:fixed;bottom:10px;left:10px;z-index:20;width:44px;height:44px;min-height:0;padding:0;display:grid;place-items:center;font-size:1.3rem;line-height:1;border-radius:50%;background:var(--paper);box-shadow:3px 3px 0 var(--ink)}
+#speak{left:64px}
 #mute[aria-pressed=true]{background:var(--pink)}
+#speak[aria-pressed=true]{background:var(--lime)}
 @media(hover:none) and (pointer:coarse){#volBox{display:none}} /* タッチ端末は音量スライダーを隠す（端末の音量ボタンを使う） */
 
 /* ================= スマホ（幅600px以下）だけの調整。PC表示には影響しない ================= */
@@ -191,6 +208,9 @@ label{display:block;margin:16px 0 6px}
   .arena .nm .note{grid-column:1/-1;font-size:.7rem;margin:2px 0 0}
   /* ログ：約10行ぶんの高さ（変えたいときは height だけ） */
   .log{height:17rem;padding:6px 8px;gap:6px;border-width:2px;border-radius:14px}
+  .vs{height:13rem;flex-direction:column-reverse;padding:6px 8px;gap:2px;border-width:2px;border-radius:14px}
+  .vsn{padding:4px 12px;font-size:1.5rem;border-width:2px;box-shadow:3px 3px 0 var(--ink)}
+  .vsx{font-size:2.8rem}
   .msg{max-width:92%;padding:3px 10px;border-width:2px;border-radius:14px;font-size:.9rem;line-height:1.5}
   .msg.n{font-size:.85rem}
   .ctl{gap:6px}
@@ -200,6 +220,7 @@ label{display:block;margin:16px 0 6px}
 <body>
 <div id="bg" aria-hidden="true"></div>
 <button id="mute" type="button" aria-label="BGMをミュート" aria-pressed="false">🔊</button>
+<button id="speak" type="button" aria-label="名乗りの読み上げ" aria-pressed="true">🗣️</button>
 <main>
 <section id="home">
   <div class="logo" aria-label="ナノリアイ"><span>ナ</span><span>ノ</span><span>リ</span><span>ア</span><span>イ</span></div>
@@ -235,7 +256,7 @@ label{display:block;margin:16px 0 6px}
   <div id="stage"></div>
   <div id="arena" class="arena" hidden>
     <div id="meCard"></div>
-    <div class="chatwrap"><div id="log" class="log" aria-live="polite"></div><div id="ctl" class="ctl"></div></div>
+    <div class="chatwrap"><div id="vs" class="vs" hidden></div><div id="log" class="log" aria-live="polite"></div><div id="ctl" class="ctl"></div></div>
     <div id="oppCard"></div>
   </div>
   <p class="status" id="conn" role="status"></p>
@@ -331,8 +352,8 @@ const bgm=['/bgm/bgm1.mp3','/bgm/bgm2.mp3'].map(u=>{const a=new Audio(u);a.prelo
 // タッチ端末（スマホ・タブレット）は音量スライダーを隠し、端末側の音量ボタンに任せる（iOSは audio.volume が効かないため）
 const touch=matchMedia('(hover:none) and (pointer:coarse)').matches;
 const vol=()=>touch?1:Math.min(1,Math.max(0,LS.get('vol',15)/100));
-let bgmOn=false;
-const bgmVol=()=>bgm.forEach(a=>a.volume=vol());
+let bgmOn=false,duck=1; // duck: 読み上げ中はBGMを小さくする倍率
+const bgmVol=()=>bgm.forEach(a=>a.volume=Math.min(1,vol()*duck));
 function bgmNext(i){const a=bgm[i%bgm.length];a.currentTime=0;a.onended=()=>bgmNext(i+1);a.play().catch(()=>{bgmOn=false})}
 function bgmStart(){if(bgmOn)return;bgmOn=true;bgmVol();bgmNext(0)}
 ['pointerdown','keydown'].forEach(e=>addEventListener(e,bgmStart));
@@ -342,6 +363,13 @@ let muted=!!LS.get('mute',false);
 function applyMute(){bgm.forEach(a=>a.muted=muted);const b=$('#mute');b.textContent=muted?'🔇':'🔊';b.setAttribute('aria-pressed',muted)}
 $('#mute').onclick=()=>{muted=!muted;LS.set('mute',muted);applyMute()};
 applyMute();
+// 名乗りの読み上げ（ブラウザ内蔵の音声合成。声は端末まかせ。設定は保存）
+let speakOn=!!LS.get('speak',true);
+const canSpeak='speechSynthesis' in window;
+function applySpeak(){const b=$('#speak');b.textContent=speakOn?'🗣️':'🤐';b.setAttribute('aria-pressed',speakOn);b.setAttribute('aria-label',speakOn?'名乗りの読み上げ：オン':'名乗りの読み上げ：オフ')}
+$('#speak').onclick=()=>{speakOn=!speakOn;LS.set('speak',speakOn);applySpeak();if(!speakOn&&canSpeak)try{speechSynthesis.cancel()}catch{}};
+if(!canSpeak)$('#speak').hidden=true;
+applySpeak();
 
 /* ---- 画面遷移 ---- */
 $('#goSetup').onclick=()=>{$('#setupErr').textContent='';show('setup')};
@@ -368,7 +396,7 @@ function open(){
   ws.onclose=()=>{if(leaving)return;$('#conn').textContent=rpick(TXT.disconnected);setTimeout(open,Math.min(1000*2**retry++,8000))};
 }
 const send=o=>ws&&ws.readyState===1&&ws.send(JSON.stringify(o));
-function leave(){leaving=true;ws&&ws.close();history.replaceState(null,'',location.pathname);show('home')}
+function leave(){leaving=true;stopReading();ws&&ws.close();history.replaceState(null,'',location.pathname);show('home')}
 function handle(m){
   if(m.type==='error'){
     if(m.code==='full'){leave();$('#setupErr').textContent=m.message;show('setup')}
@@ -404,7 +432,7 @@ function apply(s){
   drawBars(s.me.stars,s.opponent?s.opponent.stars:0,s.starsToWin);
   $('#conn').textContent=s.opponent&&!s.opponent.connected?`${s.opponent.name}の接続が切れています`:'';
   const key=[s.phase,s.turn,s.me.submitted,s.me.rematch,s.battleReady,s.me.started].join();
-  if(s.phase!=='reveal'){showArena(false);builtKey=''}
+  if(s.phase!=='reveal'){showArena(false);builtKey='';stopReading()}
   const hid=s.phase==='naming'&&(s.themeHidden||!s.theme); // 伏せられているお題は「？？？」で表示
   if(hid)setTheme('？？？');else if(['naming','judging','reveal'].includes(s.phase))setTheme(s.theme);else setTheme(null);
   const tn=$('#themeNote');tn.hidden=!(hid&&!s.me.submitted);tn.textContent=tn.hidden?'':pk('hid'+s.turn,TXT.hiddenNote);
@@ -431,10 +459,8 @@ function apply(s){
     stage(wait_(pk('judge'+s.turn,TXT.judging)));
   }else if(s.phase==='reveal'){
     const k=s.turn+':'+s.cards.me.cardName+':'+s.cards.opponent.cardName;
-    if(builtKey!==k){builtKey=k;buildArena(s.cards)}
-    if(!s.battleReady)ctl(wait_(pk('battle'+s.turn,TXT.battleWait)));
-    else if(!s.me.started)ctl(el('button',{class:'pri',onclick:e=>{e.target.disabled=true;send({type:'start'})}},'いざ、勝負！'));
-    else ctl(wait_(pk('ready'+s.turn,TXT.readyWait)));
+    if(builtKey!==k){builtKey=k;buildArena(s.cards,true);startReading(s.cards)}
+    revealCtl();
   }else if(s.phase==='finished'){
     const w=s.youWonGame;
     const hist=el('ol',{class:'hist'},(s.history||[]).map((h,i)=>el('li',{style:'--i:'+i},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」　`,el('span',{class:h.youWon?'w':'l'},h.youWon?'勝ち':'負け'))));
@@ -445,13 +471,87 @@ function apply(s){
 }
 
 const wait=ms=>new Promise(r=>{const t=Date.now(),i=setInterval(()=>{if(skip||Date.now()-t>=ms){clearInterval(i);r()}},80)});
-function showArena(on){$('#arena').hidden=!on;$('#stage').hidden=on;if(on)stag($('#arena'))}
+function showArena(on){$('#arena').hidden=!on;$('#stage').hidden=on;if(!on)showVs(false);if(on)stag($('#arena'))}
 const ctl=(...k)=>{const c=$('#ctl');c.replaceChildren(...k);stag(c)};
-function buildArena(c){
+// 名乗りの読み合い時間の目安（読み上げオフのとき）。1人ぶん = READ_BASE + 説明文の文字数 × READ_PER_CHAR（ミリ秒）
+const READ_BASE=2500,READ_PER_CHAR=35,GLARE_MS=1800;
+let readTok=0,readSkip=false,readOk=true;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function showVs(on){$('#vs').hidden=!on;$('#log').hidden=on}
+function setFocus(side){ // side: 'me' | 'opp' | null（どちらも読んでいない）
+  const set=(sel,me)=>{const e=$(sel);if(!e)return;e.classList.toggle('focus',side===me);e.classList.toggle('dim',!!side&&side!==me)};
+  set('#meCard .nm','me');set('#oppCard .nm','opp');
+  const v=(sel,me)=>{const e=$(sel);if(e)e.classList.toggle('dim',!!side&&side!==me)};
+  v('#vsMe','me');v('#vsOpp','opp');
+}
+function stopReading(){
+  readTok++;
+  if(canSpeak)try{speechSynthesis.cancel()}catch{}
+  duck=1;bgmVol();setFocus(null);
+}
+// テキストを読み上げる。最後まで読めたら true、使えない・失敗・中断なら false
+function say(text,tok){
+  return new Promise(res=>{
+    if(!speakOn||!canSpeak||!text){res(false);return}
+    let done=false,iv,to;
+    const fin=ok=>{
+      if(done)return;done=true;clearInterval(iv);clearTimeout(to);
+      if(!ok)try{speechSynthesis.cancel()}catch{}
+      duck=1;bgmVol();res(ok);
+    };
+    try{
+      speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang='ja-JP';
+      const v=speechSynthesis.getVoices().find(x=>/^ja/i.test(x.lang));
+      if(v)u.voice=v;
+      u.rate=1.1;
+      u.onend=()=>fin(true);
+      u.onerror=()=>fin(false);
+      iv=setInterval(()=>{if(readSkip||tok!==readTok||!speakOn)fin(false)},100); // スキップ・画面遷移・オフ操作で中断
+      to=setTimeout(()=>fin(false),Math.max(8000,text.length*450)); // 読み終わりの通知が来ない端末の保険
+      duck=.35;bgmVol();
+      speechSynthesis.speak(u);
+    }catch{fin(false)}
+  });
+}
+// 名乗りが出そろったら、まず睨み合い、次に1人ずつ読む。読み終えるまで「いざ、勝負！」は出さない
+async function startReading(c){
+  const tok=++readTok;
+  readSkip=false;readOk=false;
+  const live=()=>tok===readTok&&!readSkip;
+  const hold=async ms=>{const t=Date.now();while(live()&&Date.now()-t<ms)await sleep(80)};
+  const me=c.me,opp=c.opponent;
+  await hold(GLARE_MS);
+  if(live())await say(`${me.cardName}、たい、${opp.cardName}`,tok);
+  for(const [side,x] of [['me',me],['opp',opp]]){
+    if(!live())break;
+    setFocus(side);
+    const ok=await say(`${x.cardName}。${x.card.description}`,tok);
+    if(!ok)await hold(READ_BASE+x.card.description.length*READ_PER_CHAR);
+  }
+  if(tok!==readTok)return;
+  setFocus(null);
+  readOk=true;
+  if(S&&S.phase==='reveal')revealCtl();
+}
+// 名乗り公開中の下部コントロール（読み合い中 → 生成待ち → 勝負ボタン → 相手待ち）
+function revealCtl(){
+  const s=S;
+  if(!readOk){
+    ctl(el('button',{class:'ghost sm',onclick:()=>{readSkip=true;if(canSpeak)try{speechSynthesis.cancel()}catch{}}},'読み飛ばす'),
+      s.battleReady?null:wait_(pk('battle'+s.turn,TXT.battleWait)));
+  }else if(!s.battleReady)ctl(wait_(pk('battle'+s.turn,TXT.battleWait)));
+  else if(!s.me.started)ctl(el('button',{class:'pri',onclick:e=>{e.target.disabled=true;send({type:'start'})}},'いざ、勝負！'));
+  else ctl(wait_(pk('ready'+s.turn,TXT.readyWait)));
+}
+function buildArena(c,vs=false){
   names={me:c.me.cardName,opp:c.opponent.cardName};
   $('#meCard').replaceChildren(nmEl(c.me.cardName,c.me.card));
   $('#oppCard').replaceChildren(nmEl(c.opponent.cardName,c.opponent.card));
   $('#log').replaceChildren();
+  $('#vs').replaceChildren(el('div',{class:'vsn me',id:'vsMe'},c.me.cardName),el('div',{class:'vsx'},'VS'),el('div',{class:'vsn opp',id:'vsOpp'},c.opponent.cardName));
+  showVs(vs);
   showArena(true);
 }
 function addMsg(l){
@@ -466,8 +566,10 @@ function addMsg(l){
 }
 async function playResult(m){
   anim=true;skip=false;lastKey='';
+  stopReading();
   setTheme(m.theme);
   if($('#arena').hidden)buildArena({me:m.me,opponent:m.opponent});
+  showVs(false);
   $('#log').replaceChildren();
   ctl(el('button',{class:'ghost sm',onclick:()=>skip=true},'スキップ'));
   await wait(700);
