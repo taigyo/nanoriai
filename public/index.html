@@ -104,7 +104,7 @@ label{display:block;margin:16px 0 6px}
 .msg.opp{transform-origin:right bottom;align-self:flex-end;background:var(--pink);border-bottom-right-radius:4px}
 .msg.n{align-self:center;background:var(--sky);border-style:dashed;font-size:1.1rem;text-align:center}
 .ctl{display:flex;flex-direction:column;align-items:center;gap:12px}
-.verdict{font:400 1.9rem/1.4 var(--disp);text-align:center;padding:14px;border:var(--line);background:var(--lime);margin:16px 0;border-radius:24px;animation:slam .7s backwards;box-shadow:5px 5px 0 var(--ink)}
+.verdict{white-space:pre-line;font:400 1.9rem/1.4 var(--disp);text-align:center;padding:14px;border:var(--line);background:var(--lime);margin:16px 0;border-radius:24px;animation:slam .7s backwards;box-shadow:5px 5px 0 var(--ink)}
 .verdict.lose{background:var(--pink)}
 .ctl .verdict{width:100%;margin:0}
 
@@ -147,14 +147,14 @@ label{display:block;margin:16px 0 6px}
    読んでいる側は .on、もう片方は .dim になる。待ち時間の調整は JS の READ_BASE / READ_PER_CHAR */
 @keyframes glareL{0%,100%{transform:translateX(0) rotate(-1.5deg)}50%{transform:translateX(12px) rotate(1deg)}}
 @keyframes glareR{0%,100%{transform:translateX(0) rotate(1.5deg)}50%{transform:translateX(-12px) rotate(-1deg)}}
-.vs{height:min(64vh,560px);display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:6px;padding:12px;background:rgba(255,255,255,.4);border:var(--line);border-radius:20px}
+.vs{height:min(64vh,560px);display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:6px;padding:12px}
 .vsn{padding:12px 16px;border:var(--line);border-radius:24px;text-align:center;font:400 clamp(1.7rem,4.6vw,2.7rem)/1.3 var(--disp);overflow-wrap:anywhere;box-shadow:5px 5px 0 var(--ink);transition:opacity .35s}
 .vsn.me{background:var(--lime);margin-right:12%;animation:slideL .65s var(--boing) backwards,glareL 1.7s ease-in-out .9s infinite}
 .vsn.opp{background:var(--pink);margin-left:12%;animation:slideR .65s var(--boing) .15s backwards,glareR 1.7s ease-in-out 1.05s infinite}
 .vsx{align-self:center;color:#fff;font:400 clamp(3.4rem,11vw,5.6rem)/1 var(--disp);-webkit-text-stroke:.14em var(--ink);paint-order:stroke fill;filter:drop-shadow(4px 4px 0 var(--pink));animation:don .8s .4s backwards}
 .vsn.dim{opacity:.4}
 .nm{transition:transform .35s var(--boing),opacity .35s,box-shadow .35s}
-.arena .nm.focus{transform:scale(1.04) rotate(-1deg);box-shadow:8px 8px 0 var(--ink)}
+.arena .nm.focus{transform:scale(1.05);box-shadow:8px 8px 0 var(--ink)}
 .arena .nm.dim{opacity:.55;transform:scale(.97)}
 @media(max-width:900px){.arena{grid-template-columns:1fr 1fr}.chatwrap{grid-column:1/-1;order:3}}
 /* ---- ミュートボタン（PC・スマホとも右上に常時固定） ---- */
@@ -207,7 +207,7 @@ label{display:block;margin:16px 0 6px}
   .arena .nm .note{grid-column:1/-1;font-size:.7rem;margin:2px 0 0}
   /* ログ：約10行ぶんの高さ（変えたいときは height だけ） */
   .log{height:17rem;padding:6px 8px;gap:6px;border-width:2px;border-radius:14px}
-  .vs{height:13rem;flex-direction:column-reverse;padding:6px 8px;gap:2px;border-width:2px;border-radius:14px}
+  .vs{height:13rem;flex-direction:column-reverse;padding:6px 8px;gap:2px}
   .vsn{padding:4px 12px;font-size:1.5rem;border-width:2px;box-shadow:3px 3px 0 var(--ink)}
   .vsx{font-size:2.8rem}
   .msg{max-width:92%;padding:3px 10px;border-width:2px;border-radius:14px;font-size:.9rem;line-height:1.5}
@@ -300,7 +300,7 @@ oppThinking:['{name}は名乗りを考え中…','{name}は腕組みして唸っ
 oppDone:['{name}は名乗りを決めた！','{name}は覚悟を決めた！','{name}の名乗りが固まった！','{name}は不敵に笑っている…','{name}は準備万端だ！','{name}は名乗りを胸に秘めた！','{name}はもう名乗りたくてうずうずしている！','{name}は腕を組んで待っている！'],
 battleWait:['天の声が勝負を語っています。名乗りを読んで待とう','天の声が勝負の筋書きを練っています。相手の名乗りを読んで待とう','勝負の行方を天の声が占っています。名乗りを眺めて待とう','天の声が実況の準備中です。名乗りをじっくり読もう','戦いの幕を天の声が編んでいます。名乗りを味わって待とう','天の声が勝負をまとめています。ライバルの名乗りを読み込もう','天の声が息を吸い込みました。名乗りを読んで待とう','天の声が筆をとりました。名乗りを読みながら待とう','天の声が戦場に旗を立てています。名乗りをよく読もう','勝負の結末を天の声が寝かせています。名乗りを読んで待とう'],
 readyWait:['相手の覚悟を待っています','相手が拳を握りしめるのを待っています','相手のうなずきを待っています','相手が一歩踏み出すのを待っています','相手の闘志が満ちるのを待っています','相手が太鼓を叩くのを待っています','相手が靴ひもを結び直しています','相手の気合いを待っています'],
-turnWin:['あなたの名乗りの勝ち！ ★ゲット！','天晴れ！あなたの名乗りの勝ち！ ★ゲット！','名乗り勝ち！ ★ゲット！','その名、見事！ ★ゲット！','名乗りが天に認められた！ ★ゲット！','あなたの名が勝った！ ★ゲット！','堂々たる名乗り！ ★ゲット！','言ったもん勝ち、いや名乗ったもん勝ち！ ★ゲット！','名前の力が炸裂！ ★ゲット！','これぞ名乗りの極み！ ★ゲット！'],
+turnWin:['あなたの名乗りの勝ち！\n★ゲット！','天晴れ！あなたの名乗りの勝ち！\n★ゲット！','名乗り勝ち！\n★ゲット！','その名、見事！\n★ゲット！','名乗りが天に認められた！\n★ゲット！','あなたの名が勝った！\n★ゲット！','堂々たる名乗り！\n★ゲット！','言ったもん勝ち、いや名乗ったもん勝ち！\n★ゲット！','名前の力が炸裂！\n★ゲット！','これぞ名乗りの極み！\n★ゲット！'],
 turnLose:['あいての名乗りの勝ち…','惜しい！あいての名乗りの勝ち…','あいての名が上回った…','名乗り負け…次こそ！','あいての名乗りに軍配が上がった…','天の声はあいてに微笑んだ…','その名、あと一歩だった…','あいての名乗りが一枚上手だった…','名前の力、及ばず…','悔しいが、あっぱれ！あいての勝ち…'],
 gameWin:['名乗り王はあなただ！おめでとう！','あなたこそ名乗り王！天下に名を轟かせた！','名乗り王の誕生だ！万歳！','見事、名乗り王の座をつかんだ！','名乗り界の頂点にあなたの名が刻まれた！','王冠はあなたのものだ！名乗り王に乾杯！','すべての名乗りを制した！あなたが名乗り王だ！','天の声も拍手喝采！名乗り王の誕生だ！'],
 gameLose:['名乗り負け…出直そう！','名乗り王の座は遠かった…また名乗ろう！','惜しくも王冠には届かず…次こそ！','負けても名は残る。出直そう！','今日の名乗りはここまで。また挑もう！','天の声は言う。「いい名乗りだった」','敗れたり…だが名乗りは続く！','名乗り王への道は、まだこれからだ！'],
@@ -367,7 +367,8 @@ function applyMute(){bgm.forEach(a=>a.muted=muted);const b=$('#mute');b.textCont
 $('#mute').onclick=()=>{muted=!muted;LS.set('mute',muted);applyMute()};
 applyMute();
 // 名乗りの読み上げ（ブラウザ内蔵の音声合成。声は端末まかせ。設定は保存）
-const SPEAK_RATE=2; // 読み上げ速度（1が標準。端末によって上限あり）
+const SPEAK_RATE_PC=2,SPEAK_RATE_TOUCH=1.4; // 読み上げ速度（1が標準）。スマホは速く聞こえるため別設定
+const speakRate=()=>touch?SPEAK_RATE_TOUCH:SPEAK_RATE_PC;
 let speakOn=!!LS.get('speak',true),speechFails=0,unlocked=false;
 const canSpeak='speechSynthesis' in window;
 // スマホは「タップの中で一度しゃべらせる」まで音声が出ないことがあるため、最初のタップで無音の発話をして解錠する
@@ -475,7 +476,7 @@ function apply(s){
     revealCtl();
   }else if(s.phase==='finished'){
     const w=s.youWonGame;
-    const hist=el('ol',{class:'hist'},(s.history||[]).map((h,i)=>el('li',{style:'--i:'+i},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」　`,el('span',{class:h.youWon?'w':'l'},h.youWon?'勝ち':'負け'))));
+    const hist=el('ol',{class:'hist'},(s.history||[]).map((h,i)=>el('li',{style:'--i:'+i},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」`,el('br'),el('span',{class:h.youWon?'w':'l'},h.youWon?'勝ち':'負け'))));
     stage(el('div',{class:'verdict'+(w?'':' lose')},pk(w?'finW':'finL',w?TXT.gameWin:TXT.gameLose)),hist,
       el('div',{class:'row',style:'justify-content:center'},el('button',{class:'pri',disabled:s.me.rematch?'':null,onclick:()=>send({type:'rematch'})},s.me.rematch?'相手を待っています…':'もう一度名乗り合う'),el('button',{class:'ghost',onclick:leave},'ホームへ')));
     $('#stage').style.setProperty('--n',(s.history||[]).length);
@@ -516,7 +517,7 @@ function say(text,abort){
     try{
       if(speechSynthesis.speaking||speechSynthesis.pending)speechSynthesis.cancel();
       const u=new SpeechSynthesisUtterance(text);
-      u.lang='ja-JP';u.rate=SPEAK_RATE;
+      u.lang='ja-JP';u.rate=speakRate();
       if(!touch){const v=speechSynthesis.getVoices().find(x=>/^ja/i.test(x.lang));if(v)u.voice=v} // スマホは声の指定をせず端末の標準に任せる
       u.onstart=()=>{started=true;clearTimeout(wd)};
       u.onend=()=>fin(true);
