@@ -175,6 +175,17 @@ const FB_END = [
   ['審判は目を閉じて、何かを考えているようで、寝ていた。', '判定は天に任された。サイコロがころころ転がり、運命の目が出た！'],
 ];
 
+// 審判の最後の行から勝者を読み取る（「〇〇の勝ち」「勝者は〇〇」など）。読み取れなければ null
+function declaredWinner(text, nameA, nameB) {
+  const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const hit = (n) => {
+    const e = esc(n);
+    return new RegExp(`${e}」?(?:の勝ち|の勝利|が勝|の完勝|の圧勝|に軍配)|勝者[はも：:]?\\s*「?${e}`).test(text);
+  };
+  const A = hit(nameA), B = hit(nameB);
+  return A && !B ? 'A' : B && !A ? 'B' : null;
+}
+
 /* ③ バトル内容と結果の生成
  * log の各要素: {who:'A'|'B'|'N', text}  A/B=各名乗りの行動, N=審判（天の声）のコメント
  * 最後の行は必ず審判(N)の判定で、勝者の名前と理由を含む */
@@ -188,15 +199,17 @@ ${fmt('A', a)}
 ${fmt('B', b)}
 
 【勝敗の決め方】
-- お題が比べる基準だけで決める（例: 優しさ勝負なら優しさ、パソコン直し対決なら直す速さと確実さ）。根拠は、名乗りの正体の説明と、パラメータの具体的な値
-- 引き分けなし。必ずAかBが勝つ。名前が強そうでも、お題の基準で劣れば負ける
-- 勝因は、勝負の途中の出来事（行動と結果）の中に描いておく。最後の行で突然、新しい理由を出さない
+- 勝敗は、logに書いた出来事の結末だけで決める。名前の強そうさや、説明文・パラメータの大小で、先に勝者を決めない
+- 説明文とパラメータは、行動や展開を考えるための材料。強い設定でも、途中の出来事で失敗したり、お題の基準で劣ったりすれば負ける（弱そうな側が勝ってもよい）
+- 比べる基準はお題のとおり（例: 優しさ勝負なら優しさ、パソコン直し対決なら直す速さと確実さ）。その基準で差がつく出来事を描く
+- 先にlogを最後まで書き、その結末から winner を決める。最後の行の勝者と winner は必ず同じにする
+- 引き分けなし。必ずAかBが勝つ
 
 【logの書き方】
 - 10〜14行の配列。各要素は {"who":"A","text":"..."} の形（A=Aの行動 / B=Bの行動 / N=審判の天の声）
 - 1行は短く、シンプルに。10〜30字。1行に出来事は1つだけ。長い説明文や、複数の出来事の詰め込みは禁止
 - 行動には理由があり、結果には原因がある。「〜したので〜になった」と読み手が納得できる流れにする
-- 唐突な逆転、後出しの新設定、急な奇跡は禁止。逆転させるなら、名乗りの説明かパラメータにその根拠があること
+- 唐突な逆転、後出しの新設定、急な奇跡は禁止。逆転させるなら、途中の出来事の積み重ねとして描くこと
 - AとBが交互でなくてよい。毎回どちらかが行動を起こし、勝負がどんどん進む
 - 名乗りの自己紹介や、名乗るだけのセリフは書かない。いきなり勝負の行動から始める
 - 文中でAやBとは書かず、必ず名乗った名前（例:「${a.name}」）で呼ぶ
@@ -227,14 +240,18 @@ ${fmt('B', b)}
     // 長すぎるときは、結果の行を落とさないよう「最初の15行＋最後の1行」にする
     if (log.length > 16) log = [...log.slice(0, 15), log[log.length - 1]];
 
-    // 最後の行が「審判の判定で、勝者の名前を含む」ことを保証する
+    // 勝敗はバトル内容（最後の審判の行）が最優先。JSONのwinnerは、最後の行から勝者が読み取れないときの予備
     const names = { A: a.name, B: b.name };
-    const loser = winner === 'A' ? 'B' : 'A';
     const last = log[log.length - 1];
-    const hasW = last.who === 'N' && last.text.includes(names[winner]);
-    const hasL = last.who === 'N' && last.text.includes(names[loser]);
-    if (!hasW && hasL) winner = loser; // 最後の行が相手の勝ちと言っているなら、文章のほうを信じる
-    else if (!hasW) log.push({ who: 'N', text: `「${names[winner]}」の勝ち！` });
+    const declared = last.who === 'N' ? declaredWinner(last.text, a.name, b.name) : null;
+    if (declared) winner = declared;
+    else {
+      const loser = winner === 'A' ? 'B' : 'A';
+      const hasW = last.who === 'N' && last.text.includes(names[winner]);
+      const hasL = last.who === 'N' && last.text.includes(names[loser]);
+      if (!hasW && hasL) winner = loser;
+      else if (!hasW) log.push({ who: 'N', text: `「${names[winner]}」の勝ち！` });
+    }
     return { log, winner };
   });
   if (r) return r;
