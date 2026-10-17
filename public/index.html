@@ -3,18 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#FFE66D">
 <title>ナノリアイ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
 <style>
-:root{--sky:#cde7f5;--ink:#14213d;--paper:#fffdf4;--coral:#ff5c7a;--sun:#ffd23f;--mint:#6fd9b8;--mute:#55617f;--disp:"Dela Gothic One","Zen Maru Gothic",sans-serif;--boing:cubic-bezier(.34,1.56,.64,1)}
-*{box-sizing:border-box}
-body{margin:0;background:var(--sky);color:var(--ink);font:500 20px/1.7 "Zen Maru Gothic",sans-serif;min-height:100vh;overflow-x:hidden}
-main{max-width:1160px;margin:0 auto;padding:20px 16px 64px}
+:root{--sky:#68D8F5;--sun:#FFE66D;--pink:#FF8FB8;--lime:#B7F28B;--ink:#282638;--paper:#FFFBEA;--mute:#57536e;--disp:"Dela Gothic One","Zen Maru Gothic",sans-serif;--boing:cubic-bezier(.34,1.56,.64,1)}
+/* すべての文字に縁取り（塗りの外側だけに白フチ）。濃い文字→白フチ、白い文字→墨フチ */
+*{box-sizing:border-box;-webkit-text-stroke:.15em #fff;paint-order:stroke fill}
+h2,h3,.logo span,.theme,.verdict,.shout,.code,.who,.nm.back{-webkit-text-stroke-width:.1em}
+body{margin:0;background:var(--sun);color:var(--ink);font:500 20px/1.7 "Zen Maru Gothic",sans-serif;min-height:100vh;overflow-x:hidden}
+main{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding:20px 16px 64px}
 #home,#setup,#coll,#settings,#stage{max-width:580px;margin-inline:auto}
 [hidden]{display:none!important}
 h2{font:400 2.1rem/1.3 var(--disp);margin:8px 0 14px}
+/* ---- 背景：くるくる回りながら上へ昇る図形 ---- */
+#bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#bg .sh{position:absolute;bottom:-18vmin;opacity:.92;will-change:transform;animation:rise linear infinite}
+#bg svg{display:block;width:100%;height:100%;animation:spin linear infinite}
+@keyframes rise{to{transform:translateY(-140vh)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 /* ---- ポップなアニメーション ---- */
 @keyframes pop{0%{transform:scale(.3) rotate(-8deg);opacity:0}55%{transform:scale(1.12) rotate(2deg);opacity:1}78%{transform:scale(.96)}100%{transform:none;opacity:1}}
 @keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg) scale(1.08)}75%{transform:rotate(4deg) scale(1.08)}}
@@ -27,10 +36,10 @@ h2{font:400 2.1rem/1.3 var(--disp);margin:8px 0 14px}
 @keyframes cute{0%{transform:scale(.2) translateY(16px) rotate(-6deg);opacity:0}55%{transform:scale(1.14) rotate(3deg);opacity:1}80%{transform:scale(.97)}100%{transform:none}}
 @keyframes squish{0%{transform:scale(1)}40%{transform:scale(1.25,.8)}100%{transform:scale(1)}}
 :where(section:not([hidden])>*,#stage>*,#arena>*,#ctl>*,.grid>*){animation:pop .5s backwards;animation-delay:calc(var(--i,0)*.07s)}
-button{font:inherit;font-size:1.1rem;font-weight:700;color:var(--ink);background:var(--sun);border:3px solid var(--ink);border-radius:999px;padding:10px 26px;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .2s var(--boing),box-shadow .2s}
+button{font:inherit;font-size:1.1rem;font-weight:700;color:var(--ink);background:var(--sky);border:3px solid var(--ink);border-radius:999px;padding:10px 26px;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .2s var(--boing),box-shadow .2s}
 button:hover{animation:wob .45s;box-shadow:6px 6px 0 var(--ink)}
 button:active{animation:squish .25s;transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
-button.pri{background:var(--coral)}button.ghost{background:var(--paper)}
+button.pri{background:var(--pink)}button.ghost{background:var(--lime)}
 button:disabled{opacity:.5;cursor:default;animation:none}
 button.sm{padding:3px 16px;font-size:.95rem;box-shadow:3px 3px 0 var(--ink)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:3px}
@@ -38,57 +47,60 @@ input{font:inherit;font-size:1.2rem;width:100%;padding:12px 14px;border:3px soli
 label{display:block;font-weight:700;margin:16px 0 6px}
 .row{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
 .logo{display:flex;justify-content:center;gap:8px;margin:32px 0 12px}
-.logo span{width:clamp(62px,18vw,104px);aspect-ratio:1;display:grid;place-items:center;font:400 clamp(2.3rem,11vw,4.2rem) var(--disp);border:3px solid var(--ink);border-radius:50% 50% 50% 12%;box-shadow:4px 4px 0 var(--ink);background:var(--paper);}
-.logo span:nth-child(1){transform:rotate(-6deg)}.logo span:nth-child(2){background:var(--sun);transform:rotate(4deg)}.logo span:nth-child(3){background:var(--coral);transform:rotate(-3deg)}.logo span:nth-child(4){background:var(--mint);transform:rotate(5deg)}.logo span:nth-child(5){transform:rotate(-4deg)}
+.logo span{width:clamp(62px,18vw,104px);aspect-ratio:1;display:grid;place-items:center;font:400 clamp(2.3rem,11vw,4.2rem) var(--disp);border:3px solid var(--ink);border-radius:50% 50% 50% 12%;box-shadow:4px 4px 0 var(--ink);background:var(--sky)}
+.logo span:nth-child(1){transform:rotate(-6deg)}.logo span:nth-child(2){background:var(--pink);transform:rotate(4deg)}.logo span:nth-child(3){background:var(--lime);transform:rotate(-3deg)}.logo span:nth-child(4){background:var(--sky);transform:rotate(5deg)}.logo span:nth-child(5){background:var(--pink);transform:rotate(-4deg)}
 .lead{text-align:center;margin:0 0 16px;font-size:1.1rem}
 /* ---- 名乗り（正体）パネル ---- */
-.nm{background:var(--paper);border:3px solid var(--ink);border-radius:30px 30px 30px 8px;padding:18px;box-shadow:5px 5px 0 var(--ink);}
-.nm.weak{background:#e8e5da;border-style:dashed}
+.nm{background:var(--sky);border:3px solid var(--ink);border-radius:30px 30px 30px 8px;padding:18px;box-shadow:5px 5px 0 var(--ink)}
+#meCard .nm{background:var(--lime)}
+#oppCard .nm{background:var(--pink)}
+.nm.weak,#meCard .nm.weak,#oppCard .nm.weak{background:#dcd9ea;border-style:dashed}
 .nm h3{margin:0 0 8px;font:400 1.95rem/1.35 var(--disp);overflow-wrap:anywhere}
 .nm p{margin:0 0 12px;font-size:1.3rem;line-height:1.75}
 .nm .note{color:var(--mute);font-size:.95rem}
 .nm .meta{color:var(--mute);font-size:.95rem;margin:10px 0 0}
 .params{display:grid;grid-template-columns:auto 1fr;gap:3px 16px;margin:0;font-size:1.15rem}
 .params dt{color:var(--mute)}.params dd{margin:0;font-weight:700;text-align:right}
-.nm.back{display:grid;place-items:center;min-height:120px;background:var(--coral);font:400 2.6rem var(--disp);animation:bob 1s infinite}
+.nm.back{display:grid;place-items:center;min-height:120px;background:var(--pink);font:400 2.6rem var(--disp);animation:bob 1s infinite}
 .who{font:400 1.1rem var(--disp);margin:14px 0 6px}
 .bars{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:1.1rem}
 .bars div:last-child{text-align:right}
-.st{letter-spacing:.12em;font-size:1.5rem}
+.st{letter-spacing:.12em;font-size:1.5rem;color:var(--sun);-webkit-text-stroke:.14em var(--ink)}
 .st i{font-style:normal;display:inline-block}
 .st i.new{animation:starpop .8s .3s backwards}
-.theme{background:var(--sun);border:3px solid var(--ink);padding:14px 18px;text-align:center;font:400 clamp(1.9rem,8.5vw,3rem)/1.35 var(--disp);transform:rotate(-1deg);margin:14px auto;max-width:760px;animation:don .8s backwards;border-radius:8px 24px 8px 24px}
+.theme{background:var(--sky);border:3px solid var(--ink);padding:14px 18px;text-align:center;font:400 clamp(1.9rem,8.5vw,3rem)/1.35 var(--disp);transform:rotate(-1deg);margin:14px auto;max-width:760px;animation:don .8s backwards;border-radius:8px 24px 8px 24px;box-shadow:5px 5px 0 var(--ink)}
 .arena{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start;margin-top:8px}
 #meCard{animation:slideL .65s var(--boing) backwards}
 #oppCard{animation:slideR .65s var(--boing) backwards}
 .chatwrap{display:flex;flex-direction:column;gap:10px}
-.log{height:min(64vh,560px);overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px;background:rgba(255,255,255,.55);border:3px solid var(--ink);border-radius:20px}
+.log{height:min(64vh,560px);overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px;background:rgba(255,255,255,.4);border:3px solid var(--ink);border-radius:20px}
 .log>:first-child{margin-top:auto}
 .msg{max-width:88%;padding:8px 14px;border:3px solid var(--ink);border-radius:20px;font-size:1.25rem;line-height:1.65;animation:cute .45s backwards;overflow-wrap:anywhere}
 .msg small{display:block;font-size:.8rem;color:var(--mute);line-height:1.4}
-.msg.me{transform-origin:left bottom;align-self:flex-start;background:var(--mint);border-bottom-left-radius:4px}
-.msg.opp{transform-origin:right bottom;align-self:flex-end;background:var(--sun);border-bottom-right-radius:4px}
-.msg.n{align-self:center;background:var(--paper);border-style:dashed;font-size:1.1rem;text-align:center;color:var(--mute)}
+.msg.me{transform-origin:left bottom;align-self:flex-start;background:var(--lime);border-bottom-left-radius:4px}
+.msg.opp{transform-origin:right bottom;align-self:flex-end;background:var(--pink);border-bottom-right-radius:4px}
+.msg.n{align-self:center;background:var(--sky);border-style:dashed;font-size:1.1rem;text-align:center;color:#fff;-webkit-text-stroke-color:var(--ink)}
 .ctl{display:flex;flex-direction:column;align-items:center;gap:12px}
-.verdict{font:400 1.9rem/1.4 var(--disp);text-align:center;padding:14px;border:3px solid var(--ink);background:var(--mint);margin:16px 0;border-radius:24px;animation:slam .7s backwards}
+.verdict{font:400 1.9rem/1.4 var(--disp);text-align:center;padding:14px;border:3px solid var(--ink);background:var(--lime);margin:16px 0;border-radius:24px;animation:slam .7s backwards;box-shadow:5px 5px 0 var(--ink)}
 .ctl .verdict{width:100%;margin:0}
-.verdict.lose{background:var(--paper)}
-.shout{font:400 clamp(2.6rem,11vw,3.8rem)/1.2 var(--disp);text-align:center;margin:10px 0 4px;color:var(--coral);text-shadow:3px 3px 0 var(--ink)}
-.code{font:400 2.8rem var(--disp);letter-spacing:.2em;text-align:center;margin:8px 0}
-.status{text-align:center;color:var(--mute);margin:16px 0}
-.wait::before{content:"●●●";display:block;letter-spacing:.4em;color:var(--coral);animation:bob 1s infinite}
+.verdict.lose{background:var(--pink)}
+.shout{font:400 clamp(2.6rem,11vw,3.8rem)/1.2 var(--disp);text-align:center;margin:10px 0 4px;color:#fff;-webkit-text-stroke-color:var(--ink);text-shadow:4px 4px 0 var(--pink)}
+.code{font:400 2.8rem var(--disp);letter-spacing:.2em;text-align:center;margin:8px 0;color:#fff;-webkit-text-stroke-color:var(--ink);text-shadow:4px 4px 0 var(--pink)}
+.status{text-align:center;color:var(--ink);margin:16px 0}
+.wait::before{content:"●●●";display:block;letter-spacing:.4em;color:var(--pink);-webkit-text-stroke:.14em var(--ink);animation:bob 1s infinite}
 .grid{display:grid;gap:20px;margin-top:16px}
 .hist{list-style:none;padding:0;margin:18px 0;display:grid;gap:10px}
-.hist li{background:var(--paper);border:3px solid var(--ink);border-radius:16px;padding:8px 16px;line-height:1.5}
+.hist li{background:var(--sky);border:3px solid var(--ink);border-radius:16px;padding:8px 16px;line-height:1.5;box-shadow:3px 3px 0 var(--ink)}
+.hist li:nth-child(even){background:var(--lime)}
 .hist small{display:block;color:var(--mute);font-size:.9rem}
-.hist .w{color:var(--coral);font-weight:700}
-input[type=range]{padding:0;border:0;background:none;accent-color:var(--coral);height:32px}
+.hist .w{color:#fff;-webkit-text-stroke-color:var(--ink);font-weight:700}
+input[type=range]{padding:0;border:0;background:none;accent-color:var(--pink);height:32px}
 .err{color:#b3123a;font-weight:700;min-height:1.7em}
 @media(max-width:900px){.arena{grid-template-columns:1fr 1fr}.chatwrap{grid-column:1/-1;order:3}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<div id="bg" aria-hidden="true"></div>
 <main>
 <section id="home">
   <div class="logo" aria-label="ナノリアイ"><span>ナ</span><span>ノ</span><span>リ</span><span>ア</span><span>イ</span></div>
@@ -155,6 +167,63 @@ const show=id=>{
 const stage=(...k)=>{const s=$('#stage');s.replaceChildren(...k);stag(s)};
 const wait_=t=>el('p',{class:'status wait'},t);
 
+/* ---- 文言バリエーション（すべてランダム表示） ---- */
+const TXT={
+connecting:['つながっています…','天の声に電話をかけています…','名乗り合いの場へ向かっています…','雲をかきわけて進んでいます…','空の上とつながっています…','太鼓の準備をしています…','天の声がマイクの電源を入れています…','通信の神様にお願いしています…','名乗りの花道を掃除しています…','ただいま参ります、少々お待ちを…'],
+lobby:['名乗り合う相手を待っています','まだ見ぬライバルの到着を待っています','空席がひとつ。誰かの名乗りを待っています','土俵に塩をまいて待っています','座布団を温めて待っています','合言葉を知る者の到着を待っています','相手はまだ名乗りの練習中かもしれません','強そうな名前をひっさげた挑戦者を待っています','風のうわさでは、誰かが来るはず…','友だちが来るまで、少し素振りでもしておこう'],
+theming:['天の声がお題を考えています','天の声がうんうん唸っています','天の声が辞書をめくっています','天の声が今日のお題をくじで引いています','お題が空から降ってくるのを待っています','天の声が咳払いをしました','天の声がお題を煮込んでいます','天の声が思いつきを捕まえようとしています','天の声がお題を決めかねています','天の声がお題をそっと磨いています'],
+submitted:['名乗った！','堂々と名乗った！','言い切った！','名乗りを上げた！','世界に響いた！','もう後戻りはできない！','名乗ってしまった！','いい声だ！','名乗りが天に届いた！','名乗りの旗が立った！'],
+judging:['天の声が名乗りの正体を見破っています','天の声が名乗りをじーっと見つめています','天の声が名乗りの裏側をのぞいています','天の声が虫眼鏡で名乗りの正体を調べています','天の声が名乗りに耳をすましています','天の声が名乗りの重さを量っています','天の声が名乗りをひっくり返して確かめています','天の声が名乗りの匂いをかいでいます','名乗りが姿をあらわそうとしています','天の声が鑑定のハンコを握りしめています'],
+oppThinking:['{name}は名乗りを考え中…','{name}は腕組みして唸っている…','{name}は天井を見つめている…','{name}は名乗りを練り上げている…','{name}は深呼吸している…','{name}は口の中で名乗りを転がしている…','{name}はまだ決めかねている…','{name}は名乗りの最終調整中…'],
+oppDone:['{name}は名乗りを決めた！','{name}は覚悟を決めた！','{name}の名乗りが固まった！','{name}は不敵に笑っている…','{name}は準備万端だ！','{name}は名乗りを胸に秘めた！','{name}はもう名乗りたくてうずうずしている！','{name}は腕を組んで待っている！'],
+battleWait:['天の声が勝負を語っています。名乗りを読んで待とう','天の声が勝負の筋書きを練っています。相手の名乗りを読んで待とう','勝負の行方を天の声が占っています。名乗りを眺めて待とう','天の声が実況の準備中です。名乗りをじっくり読もう','戦いの幕を天の声が編んでいます。名乗りを味わって待とう','天の声が勝負をまとめています。ライバルの名乗りを読み込もう','天の声が息を吸い込みました。名乗りを読んで待とう','天の声が筆をとりました。名乗りを読みながら待とう','天の声が戦場に旗を立てています。名乗りをよく読もう','勝負の結末を天の声が寝かせています。名乗りを読んで待とう'],
+readyWait:['相手の覚悟を待っています','相手が拳を握りしめるのを待っています','相手のうなずきを待っています','相手が一歩踏み出すのを待っています','相手の闘志が満ちるのを待っています','相手が太鼓を叩くのを待っています','相手が靴ひもを結び直しています','相手の気合いを待っています'],
+turnWin:['あなたの名乗りの勝ち！ ★ゲット！','天晴れ！あなたの名乗りの勝ち！ ★ゲット！','名乗り勝ち！ ★ゲット！','その名、見事！ ★ゲット！','名乗りが天に認められた！ ★ゲット！','あなたの名が勝った！ ★ゲット！','堂々たる名乗り！ ★ゲット！','言ったもん勝ち、いや名乗ったもん勝ち！ ★ゲット！','名前の力が炸裂！ ★ゲット！','これぞ名乗りの極み！ ★ゲット！'],
+turnLose:['あいての名乗りの勝ち…','惜しい！あいての名乗りの勝ち…','あいての名が上回った…','名乗り負け…次こそ！','あいての名乗りに軍配が上がった…','天の声はあいてに微笑んだ…','その名、あと一歩だった…','あいての名乗りが一枚上手だった…','名前の力、及ばず…','悔しいが、あっぱれ！あいての勝ち…'],
+gameWin:['名乗り王はあなただ！おめでとう！','あなたこそ名乗り王！天下に名を轟かせた！','名乗り王の誕生だ！万歳！','見事、名乗り王の座をつかんだ！','名乗り界の頂点にあなたの名が刻まれた！','王冠はあなたのものだ！名乗り王に乾杯！','すべての名乗りを制した！あなたが名乗り王だ！','天の声も拍手喝采！名乗り王の誕生だ！'],
+gameLose:['名乗り負け…出直そう！','名乗り王の座は遠かった…また名乗ろう！','惜しくも王冠には届かず…次こそ！','負けても名は残る。出直そう！','今日の名乗りはここまで。また挑もう！','天の声は言う。「いい名乗りだった」','敗れたり…だが名乗りは続く！','名乗り王への道は、まだこれからだ！'],
+guide:['ふさわしい名を、堂々と。','胸を張って、名を名乗れ。','己の名に、力を込めて。','勇ましい名を、さあ。','好きな名で、堂々と。','名は力だ。思いきって。','恥ずかしがらず、高らかに。','天の声が耳をすませています。','世界があなたの名乗りを待っている。','ひと言で、世界をひっくり返せ。'],
+hiddenNote:['お題は名乗ったあとに発表！','お題は名乗ってからのお楽しみ！','お題は、まだ天の声だけが知っている…','お題は伏せられています。勘で勝負！','何と戦うかは、名乗ったあとで！','お題は封印中。度胸が試される！'],
+weakNote:['名乗りが小さすぎて、ふつうのなにかになりました','名乗りの力がしぼんで、ふつうのなにかになりました','名乗りがうまく届かず、ふつうのなにかになりました','名乗りが迷子になって、ふつうのなにかになりました','名乗りの勢いが足りず、ふつうのなにかになりました','天の声が首をかしげ、ふつうのなにかになりました','名乗りが風に飛ばされて、ふつうのなにかになりました','名乗りがふにゃっとして、ふつうのなにかになりました'],
+collEmpty:['まだ名乗っていません。名乗り合うと、ここに集まります。','図鑑はまだ空っぽです。名乗るたびに、ここが賑やかになります。','ページは真っ白。あなたの名乗りが埋めていきます。','名乗りの足跡はまだありません。まずは一度名乗ってみよう！','ここは名乗りの宝箱。まだ空です。','誰も住んでいない図鑑です。名乗りの新入りを待っています。'],
+disconnected:['接続が切れました。つなぎ直しています…','糸が切れました。結び直しています…','天の声が一瞬、電波の外に出ました。つなぎ直しています…','回線がぷつっと途切れました。戻っています…','通信の神様がよそ見をしました。つなぎ直しています…','天の声を見失いました。探しています…'],
+replaced:['同じIDで別の接続があったため、このタブは切断されました','別のタブで名乗りが続いているため、こちらは退場です','同じ名乗り手が別タブにいたので、こちらは幕を引きました','分身の術はできません。別のタブが優先されました','あなたはもう一人いるようです。こちらのタブは切断されました'],
+shortCode:['合言葉は4文字以上で入力してください','合言葉が短すぎます。4文字以上でお願いします','合言葉はもう少し長いようです。4文字以上で！','呪文が足りません。4文字以上で唱えてください','合言葉が短くて心細そうです。4文字以上でお願いします']
+};
+const rpick=a=>a[Math.floor(Math.random()*a.length)];
+// 同じ画面の間は文言を固定するため、抽選結果（番号）を覚えておく
+let pc={};
+const pk=(k,a)=>{if(!(k in pc))pc[k]=Math.floor(Math.random()*a.length);return a[pc[k]]};
+
+/* ---- 背景：丸・バツ・ドットなどが、くるくる回りながらゆっくり上へ昇る ---- */
+(()=>{
+  const bg=$('#bg'),I='#282638';
+  const COLORS=['#68D8F5','#FF8FB8','#B7F28B','#FFFFFF','#68D8F5','#FF8FB8','#B7F28B','#FFFFFF','#282638'];
+  // 線で描く図形は、墨の太線の上に色の細線を重ねて縁取りする
+  const line=(c,d)=>`<path d="${d}" fill="none" stroke="${I}" stroke-width="24" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="11" stroke-linecap="round"/>`;
+  const SHAPES=[
+    c=>`<circle cx="50" cy="50" r="33" fill="none" stroke="${I}" stroke-width="24"/><circle cx="50" cy="50" r="33" fill="none" stroke="${c}" stroke-width="11"/>`, // 輪
+    c=>`<circle cx="50" cy="50" r="36" fill="${c}" stroke="${I}" stroke-width="7"/>`, // 丸
+    c=>line(c,'M24 24L76 76M76 24L24 76'), // バツ
+    c=>line(c,'M50 20V80M20 50H80'), // プラス
+    c=>`<polygon points="50,14 88,80 12,80" fill="${c}" stroke="${I}" stroke-width="7" stroke-linejoin="round"/>`, // 三角
+    c=>`<rect x="18" y="18" width="64" height="64" rx="10" fill="${c}" stroke="${I}" stroke-width="7"/>`, // 四角
+    c=>[[24,72],[50,50],[76,28]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="12" fill="${c}" stroke="${I}" stroke-width="6"/>`).join(''), // ドット
+    c=>[[30,30],[70,30],[30,70],[70,70]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="10" fill="${c}" stroke="${I}" stroke-width="6"/>`).join('') // 四つ点
+  ];
+  const r=(a,b)=>a+Math.random()*(b-a);
+  const n=innerWidth<600?14:26;
+  for(let i=0;i<n;i++){
+    const rise=r(26,52),spin=r(5,15),size=r(30,78);
+    const d=document.createElement('div');
+    d.className='sh';
+    d.style.cssText=`left:${r(-2,98).toFixed(1)}%;width:${size.toFixed(0)}px;height:${size.toFixed(0)}px;animation-duration:${rise.toFixed(1)}s;animation-delay:-${(Math.random()*rise).toFixed(1)}s`;
+    const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+    d.innerHTML=`<svg viewBox="0 0 100 100" style="animation-duration:${spin.toFixed(1)}s;animation-direction:${Math.random()<.5?'normal':'reverse'}">${SHAPES[i%SHAPES.length](color)}</svg>`;
+    bg.append(d);
+  }
+})();
+
 /* ---- BGM（2曲を順番にループ。最初のクリックで開始） ---- */
 const bgm=['/bgm/bgm1.mp3','/bgm/bgm2.mp3'].map(u=>{const a=new Audio(u);a.preload='auto';return a});
 const vol=()=>Math.min(1,Math.max(0,LS.get('vol',15)/100));
@@ -175,19 +244,19 @@ $('#vol').oninput=e=>{LS.set('vol',+e.target.value);$('#volNum').textContent=e.t
 $('#rand').onclick=()=>{$('#name').value=rndName()};
 $('#saveName').onclick=()=>{LS.set('name',$('#name').value.trim()||rndName());show('home')};
 $('#create').onclick=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';connect(Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join(''))};
-$('#join').onclick=()=>{const c=$('#joinCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length<4)return $('#setupErr').textContent='合言葉は4文字以上で入力してください';connect(c)};
+$('#join').onclick=()=>{const c=$('#joinCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length<4)return $('#setupErr').textContent=rpick(TXT.shortCode);connect(c)};
 $('#leave').onclick=()=>leave();
 const q=new URLSearchParams(location.search).get('room');
 if(q){$('#joinCode').value=q.toUpperCase();show('setup')}else show('home');
 
 /* ---- 通信 ---- */
 let ws,code,S=null,pending=null,anim=false,skip=false,leaving=false,retry=0,myCard='',builtKey='',names={me:'',opp:''},shown={me:0,opp:0},lastKey='';
-function connect(c){code=c;leaving=false;S=null;pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};showArena(false);$('#theme').hidden=true;drawBars();stage(wait_('つながっています…'));show('battle');open()}
+function connect(c){code=c;leaving=false;S=null;pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};showArena(false);$('#theme').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
 function open(){
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/'+code);
   ws.onopen=()=>{retry=0;$('#conn').textContent='';send({type:'join',pid,name:getName()})};
   ws.onmessage=e=>handle(JSON.parse(e.data));
-  ws.onclose=()=>{if(leaving)return;$('#conn').textContent='接続が切れました。つなぎ直しています…';setTimeout(open,Math.min(1000*2**retry++,8000))};
+  ws.onclose=()=>{if(leaving)return;$('#conn').textContent=rpick(TXT.disconnected);setTimeout(open,Math.min(1000*2**retry++,8000))};
 }
 const send=o=>ws&&ws.readyState===1&&ws.send(JSON.stringify(o));
 function leave(){leaving=true;ws&&ws.close();history.replaceState(null,'',location.pathname);show('home')}
@@ -195,7 +264,7 @@ function handle(m){
   if(m.type==='error'){
     if(m.code==='full'){leave();$('#setupErr').textContent=m.message;show('setup')}
     else $('#conn').textContent=m.message;
-  }else if(m.type==='replaced'){leave();$('#setupErr').textContent='同じIDで別の接続があったため、このタブは切断されました';show('setup')}
+  }else if(m.type==='replaced'){leave();$('#setupErr').textContent=rpick(TXT.replaced);show('setup')}
   else if(m.type==='state'){anim?pending=m:apply(m)}
   else if(m.type==='result')playResult(m);
 }
@@ -216,11 +285,12 @@ function setTheme(t){const e=$('#theme');if(e.textContent!==(t||'')||e.hidden){e
 const nmEl=(name,c,meta)=>el('article',{class:'nm'+(c.weak?' weak':'')},
   el('h3',{},name),el('p',{},c.description),
   el('dl',{class:'params'},c.params.flatMap(p=>[el('dt',{},p.label),el('dd',{},p.value)])),
-  c.weak?el('p',{class:'note'},'名乗りが小さすぎて、ふつうのなにかになりました'):null,
+  c.weak?el('p',{class:'note'},rpick(TXT.weakNote)):null,
   meta?el('p',{class:'meta'},meta):null);
-const oppText=s=>s.opponent?(s.opponent.submitted?`${s.opponent.name}は名乗りを決めた！`:`${s.opponent.name}は名乗りを考え中…`):'';
+const oppText=s=>s.opponent?pk('opp'+s.turn+(s.opponent.submitted?'D':'T'),s.opponent.submitted?TXT.oppDone:TXT.oppThinking).replaceAll('{name}',s.opponent.name):'';
 function apply(s){
   S=s;
+  if(s.phase==='theming')pc={};
   drawBars(s.me.stars,s.opponent?s.opponent.stars:0,s.starsToWin);
   $('#conn').textContent=s.opponent&&!s.opponent.connected?`${s.opponent.name}の接続が切れています`:'';
   const key=[s.phase,s.turn,s.me.submitted,s.me.rematch,s.battleReady,s.me.started].join();
@@ -231,32 +301,32 @@ function apply(s){
   if(s.phase==='lobby'){
     const link=`${location.origin}/?room=${code}`;
     const cp=el('button',{class:'ghost',onclick:async()=>{try{await navigator.clipboard.writeText(link);cp.textContent='コピーしたよ！'}catch{cp.textContent=link}}},'招待リンクをコピー');
-    stage(el('p',{class:'status'},'この合言葉を友だちに伝えよう'),el('div',{class:'code'},code),el('div',{class:'row',style:'justify-content:center'},cp),wait_('名乗り合う相手を待っています'));
+    stage(el('p',{class:'status'},'この合言葉を友だちに伝えよう'),el('div',{class:'code'},code),el('div',{class:'row',style:'justify-content:center'},cp),wait_(pk('lobby',TXT.lobby)));
   }else if(s.phase==='theming'){
-    stage(wait_('天の声がお題を考えています'));
+    stage(wait_(pk('theme'+s.turn,TXT.theming)));
   }else if(s.phase==='naming'){
     if(s.me.submitted){
-      stage(el('p',{class:'shout'},'名乗った！'),el('p',{class:'status'},`「${myCard}」と名乗りました`),wait_('天の声が名乗りを見定めています'),el('p',{class:'status',id:'oppStat'},oppText(s)));
+      stage(el('p',{class:'shout'},pk('sub'+s.turn,TXT.submitted)),el('p',{class:'status'},`「${myCard}」と名乗りました`),wait_(pk('judge'+s.turn,TXT.judging)),el('p',{class:'status',id:'oppStat'},oppText(s)));
     }else{
       const inp=el('input',{id:'cardName',maxlength:'20',placeholder:'われこそは……（20文字まで）',autocomplete:'off','aria-label':'名乗り'});
       const go=()=>{const v=inp.value.trim();if(!v||btn.disabled)return;myCard=v;send({type:'submit',cardName:v});btn.disabled=true};
       const btn=el('button',{class:'pri',onclick:go},'名乗る！');
       inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go()});
-      stage(el('p',{class:'shout'},'名乗れ！'),el('p',{class:'status'},s.themeHidden?'ふさわしい名を、堂々と。お題は名乗ったあとに発表！':'ふさわしい名を、堂々と。'),inp,el('div',{class:'row',style:'justify-content:center'},btn),el('p',{class:'status',id:'oppStat'},oppText(s)));
+      stage(el('p',{class:'shout'},'名乗れ！'),el('p',{class:'status'},pk('guide'+s.turn,TXT.guide),...(s.themeHidden?[el('br'),pk('hid'+s.turn,TXT.hiddenNote)]:[])),inp,el('div',{class:'row',style:'justify-content:center'},btn),el('p',{class:'status',id:'oppStat'},oppText(s)));
       inp.focus();
     }
   }else if(s.phase==='judging'){
-    stage(wait_('天の声が名乗りの正体を見破っています'));
+    stage(wait_(pk('judge'+s.turn,TXT.judging)));
   }else if(s.phase==='reveal'){
     const k=s.turn+':'+s.cards.me.cardName+':'+s.cards.opponent.cardName;
     if(builtKey!==k){builtKey=k;buildArena(s.cards)}
-    if(!s.battleReady)ctl(wait_('天の声が勝負を語っています。名乗りを読んで待とう'));
+    if(!s.battleReady)ctl(wait_(pk('battle'+s.turn,TXT.battleWait)));
     else if(!s.me.started)ctl(el('button',{class:'pri',onclick:e=>{e.target.disabled=true;send({type:'start'})}},'いざ、勝負！'));
-    else ctl(wait_('相手の覚悟を待っています'));
+    else ctl(wait_(pk('ready'+s.turn,TXT.readyWait)));
   }else if(s.phase==='finished'){
     const w=s.youWonGame;
     const hist=el('ol',{class:'hist'},(s.history||[]).map(h=>el('li',{},el('small',{},`第${h.turn}戦　${h.theme}`),`${s.me.name}「${h.me}」 vs ${s.opponent?s.opponent.name:'あいて'}「${h.opp}」　`,el('span',{class:h.youWon?'w':''},h.youWon?'勝ち':'負け'))));
-    stage(el('div',{class:'verdict'+(w?'':' lose')},w?'名乗り王はあなただ！おめでとう！':'名乗り負け…出直そう！'),hist,
+    stage(el('div',{class:'verdict'+(w?'':' lose')},pk(w?'finW':'finL',w?TXT.gameWin:TXT.gameLose)),hist,
       el('div',{class:'row',style:'justify-content:center'},el('button',{class:'pri',disabled:s.me.rematch?'':null,onclick:()=>send({type:'rematch'})},s.me.rematch?'相手を待っています…':'もう一度名乗り合う'),el('button',{class:'ghost',onclick:leave},'ホームへ')));
   }
 }
@@ -285,7 +355,7 @@ async function playResult(m){
   ctl(el('button',{class:'ghost sm',onclick:()=>skip=true},'スキップ'));
   await wait(700);
   for(const l of m.log){addMsg(l);await wait(1800)}
-  ctl(el('div',{class:'verdict'+(m.youWon?'':' lose')},m.youWon?'あなたの名乗りの勝ち！ ★ゲット！':'あいての名乗りの勝ち…'),
+  ctl(el('div',{class:'verdict'+(m.youWon?'':' lose')},rpick(m.youWon?TXT.turnWin:TXT.turnLose)),
     el('button',{class:'pri',onclick:()=>{
       anim=false;const p=pending;pending=null;
       if(p)apply(p);else if(m.gameOver)apply({...S,phase:'finished',youWonGame:m.youWon,me:{...S.me,rematch:false}});else apply(S);
@@ -306,7 +376,7 @@ function drawColl(){
     const e=nmEl(c.name,c,`お題「${c.theme}」で${c.won?'勝利':'敗北'}`);
     e.append(el('button',{class:'ghost sm',onclick:()=>{LS.set('cards',LS.get('cards',[]).filter(x=>x.id!==c.id));drawColl()}},'消す'));
     return e;
-  }):[el('p',{class:'status'},'まだ名乗っていません。名乗り合うと、ここに集まります。')]));
+  }):[el('p',{class:'status'},rpick(TXT.collEmpty))]));
   stag(g);
 }
 </script>
