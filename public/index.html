@@ -37,7 +37,6 @@ h2,.nm h3,.logo span,.theme,.verdict,.shout,.code{-webkit-text-stroke:.1em #fff;
 @keyframes don{0%{transform:scale(3.2) rotate(-3deg);opacity:0}55%{transform:scale(.9) rotate(-1deg);opacity:1}75%{transform:scale(1.06) rotate(-1deg)}100%{transform:scale(1) rotate(-1deg)}}
 @keyframes slideL{0%{transform:translateX(-120%) rotate(-8deg);opacity:0}65%{transform:translateX(6%) rotate(2deg);opacity:1}100%{transform:none}}
 @keyframes slideR{0%{transform:translateX(120%) rotate(8deg);opacity:0}65%{transform:translateX(-6%) rotate(-2deg);opacity:1}100%{transform:none}}
-@keyframes cute{0%{transform:scale(.2) translateY(16px) rotate(-6deg);opacity:0}55%{transform:scale(1.14) rotate(3deg);opacity:1}80%{transform:scale(.97)}100%{transform:none}}
 :where(section:not([hidden])>*,#stage>*,#arena>*,#ctl>*,.grid>*){animation:pop .5s backwards;animation-delay:calc(var(--i,0)*.07s)}
 
 /* ---- 部品 ---- */
@@ -96,10 +95,10 @@ label{display:block;margin:16px 0 6px}
 #meCard{animation:slideL .65s var(--boing) backwards}
 #oppCard{animation:slideR .65s var(--boing) backwards}
 .chatwrap{display:flex;flex-direction:column;gap:10px}
-.log{height:min(64vh,560px);overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:10px;padding:12px;background:rgba(255,255,255,.4);border:var(--line);border-radius:20px}
+.log{height:min(64vh,560px);overflow-x:hidden;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:10px;padding:12px;background:rgba(255,255,255,.4);border:var(--line);border-radius:20px}
 .log::-webkit-scrollbar{display:none}
 .log>:first-child{margin-top:auto}
-.msg{max-width:88%;padding:8px 14px;border:var(--line);border-radius:20px;font-size:1.25rem;line-height:1.65;animation:cute .45s backwards;overflow-wrap:anywhere}
+.msg{max-width:88%;padding:8px 14px;border:var(--line);border-radius:20px;font-size:1.25rem;line-height:1.65;overflow-wrap:anywhere}
 .msg small{display:block;font-size:.8rem;color:var(--mute);line-height:1.4}
 .msg.me{transform-origin:left bottom;align-self:flex-start;background:var(--lime);border-bottom-left-radius:4px}
 .msg.opp{transform-origin:right bottom;align-self:flex-end;background:var(--pink);border-bottom-right-radius:4px}
@@ -118,6 +117,30 @@ label{display:block;margin:16px 0 6px}
 .hist .w,.hist .l{border:2px solid var(--ink);border-radius:999px;padding:0 10px}
 .hist .w{background:var(--pink)}
 .hist .l{background:#dcd9ea}
+
+/* ---- アニメーション（手で調整しやすいようにまとめた） ----
+   バトルログ   : .msg.me=msgL（左から）/ .msg.opp=msgR（右から）/ .msg.n=msgFade（ナレーション）
+   結果の上の文 : #stage>.verdict = don（バトルテーマ .theme と同じ）
+   戦歴         : .hist li = histL（奇数）/ histR（偶数）。開始 .7s、1つごとの間隔 .3s
+   図鑑         : .grid>.nm = collpop（1枚ずつ。回転の向きは --rot、遅れは --i×.08s で最大1.2s） */
+@keyframes msgL{from{transform:translateX(-110%);opacity:0}to{transform:none;opacity:1}}
+@keyframes msgR{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}}
+@keyframes msgFade{from{opacity:0;transform:translateY(8px) scale(.96);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes histL{from{transform:translateX(-120%);opacity:0}to{transform:none;opacity:1}}
+@keyframes histR{from{transform:translateX(120%);opacity:0}to{transform:none;opacity:1}}
+@keyframes collpop{0%{transform:scale(.2) rotate(var(--rot,-12deg));opacity:0}60%{transform:scale(1.1) rotate(calc(var(--rot,-12deg)*-.25));opacity:1}80%{transform:scale(.97) rotate(0deg)}100%{transform:none;opacity:1}}
+.msg.me{animation:msgL .55s cubic-bezier(.16,1,.3,1) backwards}
+.msg.opp{animation:msgR .55s cubic-bezier(.16,1,.3,1) backwards}
+.msg.n{animation:msgFade .9s ease-out backwards}
+#stage>.verdict{animation:don .8s backwards;transform:rotate(-1deg)}
+#stage>.hist{animation:none}
+.hist li{animation:histL .6s cubic-bezier(.16,1,.3,1) backwards;animation-delay:calc(.7s + var(--i,0)*.3s)}
+.hist li:nth-child(even){animation-name:histR}
+.hist~.row{animation-delay:calc(.7s + var(--n,5)*.3s)}
+#coll>.grid{animation:none}
+.grid>.nm{animation:collpop .6s var(--boing) backwards;animation-delay:min(calc(var(--i,0)*.08s),1.2s)}
+.grid>.nm:nth-child(even){--rot:12deg}
+.grid.still>.nm{animation:none}
 
 @media(max-width:900px){.arena{grid-template-columns:1fr 1fr}.chatwrap{grid-column:1/-1;order:3}}
 /* ---- ミュートボタン（PC・スマホとも右上に常時固定） ---- */
@@ -414,9 +437,10 @@ function apply(s){
     else ctl(wait_(pk('ready'+s.turn,TXT.readyWait)));
   }else if(s.phase==='finished'){
     const w=s.youWonGame;
-    const hist=el('ol',{class:'hist'},(s.history||[]).map(h=>el('li',{},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」　`,el('span',{class:h.youWon?'w':'l'},h.youWon?'勝ち':'負け'))));
+    const hist=el('ol',{class:'hist'},(s.history||[]).map((h,i)=>el('li',{style:'--i:'+i},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」　`,el('span',{class:h.youWon?'w':'l'},h.youWon?'勝ち':'負け'))));
     stage(el('div',{class:'verdict'+(w?'':' lose')},pk(w?'finW':'finL',w?TXT.gameWin:TXT.gameLose)),hist,
       el('div',{class:'row',style:'justify-content:center'},el('button',{class:'pri',disabled:s.me.rematch?'':null,onclick:()=>send({type:'rematch'})},s.me.rematch?'相手を待っています…':'もう一度名乗り合う'),el('button',{class:'ghost',onclick:leave},'ホームへ')));
+    $('#stage').style.setProperty('--n',(s.history||[]).length);
   }
 }
 
@@ -463,11 +487,12 @@ function saveCard(m){
   all.unshift({id:Date.now()+Math.random().toString(36).slice(2,6),name:m.me.cardName,description:c.description,params:c.params,weak:!!c.weak,theme:m.theme,won:m.youWon});
   LS.set('cards',all.slice(0,200));
 }
-function drawColl(){
+function drawColl(anim=true){
   const all=LS.get('cards',[]),g=$('#collList');
+  g.classList.toggle('still',!anim);
   g.replaceChildren(...(all.length?all.map(c=>{
     const e=nmEl(c.name,c,`お題「${c.theme}」で${c.won?'勝利':'敗北'}`);
-    e.append(el('button',{class:'ghost sm',onclick:()=>{LS.set('cards',LS.get('cards',[]).filter(x=>x.id!==c.id));drawColl()}},'消す'));
+    e.append(el('button',{class:'ghost sm',onclick:()=>{LS.set('cards',LS.get('cards',[]).filter(x=>x.id!==c.id));drawColl(false)}},'消す'));
     return e;
   }):[el('p',{class:'status'},rpick(TXT.collEmpty))]));
   stag(g);
