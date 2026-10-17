@@ -66,8 +66,8 @@ label{display:block;margin:16px 0 6px}
 .logo span:nth-child(4){transform:rotate(5deg)}
 .logo span:nth-child(5){background:var(--pink);transform:rotate(-4deg)}
 .lead{text-align:center;margin:20px 0;padding:16px 20px;font-size:1.1rem;background:rgba(255,255,255,.78);border-radius:12px}
-.lead:first-of-type{margin-top:56px}
-.lead:last-of-type{margin-bottom:56px}
+.lead:first-of-type{margin-top:112px}
+.lead:last-of-type{margin-bottom:112px}
 
 /* ---- 名乗り（正体）パネル ---- */
 .nm{background:var(--sky);border:var(--line);border-radius:30px 30px 30px 8px;padding:18px;box-shadow:5px 5px 0 var(--ink)}
@@ -115,7 +115,9 @@ label{display:block;margin:16px 0 6px}
 .hist li{background:var(--sky);border:var(--line);border-radius:16px;padding:8px 16px;line-height:1.5;box-shadow:3px 3px 0 var(--ink)}
 .hist li:nth-child(even){background:var(--lime)}
 .hist small{display:block;color:var(--mute);font-size:.9rem}
-.hist .w{background:var(--pink);border:2px solid var(--ink);border-radius:999px;padding:0 10px}
+.hist .w,.hist .l{border:2px solid var(--ink);border-radius:999px;padding:0 10px}
+.hist .w{background:var(--pink)}
+.hist .l{background:#dcd9ea}
 
 @media(max-width:900px){.arena{grid-template-columns:1fr 1fr}.chatwrap{grid-column:1/-1;order:3}}
 /* ---- ミュートボタン（PC・スマホとも右上に常時固定） ---- */
@@ -135,8 +137,8 @@ label{display:block;margin:16px 0 6px}
   .status{margin:10px 0}
   .logo{margin:24px 0 20px}
   .lead{margin:12px 0;padding:12px 14px;font-size:1rem}
-  .lead:first-of-type{margin-top:36px}
-  .lead:last-of-type{margin-bottom:44px}
+  .lead:first-of-type{margin-top:72px}
+  .lead:last-of-type{margin-bottom:88px}
   .shout{font-size:clamp(2rem,10vw,2.8rem)}
   .code{font-size:2.2rem}
   .verdict{font-size:1.15rem;padding:8px 10px;margin:8px 0;border-width:2px;border-radius:16px;box-shadow:3px 3px 0 var(--ink)}
@@ -206,6 +208,7 @@ label{display:block;margin:16px 0 6px}
 <section id="battle" hidden>
   <div class="bars"><div id="meBar"></div><div id="oppBar"></div></div>
   <div id="theme" class="theme" hidden></div>
+  <p id="themeNote" class="status" hidden></p>
   <div id="stage"></div>
   <div id="arena" class="arena" hidden>
     <div id="meCard"></div>
@@ -213,7 +216,7 @@ label{display:block;margin:16px 0 6px}
     <div id="oppCard"></div>
   </div>
   <p class="status" id="conn" role="status"></p>
-  <div class="row"><button class="ghost sm" id="leave">場を去る</button></div>
+  <div class="row" id="leaveRow"><button class="ghost sm" id="leave">場を去る</button></div>
 </section>
 
 <section id="coll" hidden>
@@ -334,7 +337,7 @@ if(q){$('#joinCode').value=q.toUpperCase();show('setup')}else show('home');
 
 /* ---- 通信 ---- */
 let ws,code,S=null,pending=null,anim=false,skip=false,leaving=false,retry=0,myCard='',builtKey='',names={me:'',opp:''},shown={me:0,opp:0},lastKey='';
-function connect(c){code=c;leaving=false;S=null;pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};showArena(false);$('#theme').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
+function connect(c){code=c;leaving=false;S=null;pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};showArena(false);$('#theme').hidden=true;$('#themeNote').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
 function open(){
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/'+code);
   ws.onopen=()=>{retry=0;$('#conn').textContent='';send({type:'join',pid,name:getName()})};
@@ -373,12 +376,15 @@ const nmEl=(name,c,meta)=>el('article',{class:'nm'+(c.weak?' weak':'')},
 const oppText=s=>s.opponent?pk('opp'+s.turn+(s.opponent.submitted?'D':'T'),s.opponent.submitted?TXT.oppDone:TXT.oppThinking).replaceAll('{name}',s.opponent.name):'';
 function apply(s){
   S=s;
+  $('#leaveRow').hidden=s.phase==='finished';
   if(s.phase==='theming')pc={};
   drawBars(s.me.stars,s.opponent?s.opponent.stars:0,s.starsToWin);
   $('#conn').textContent=s.opponent&&!s.opponent.connected?`${s.opponent.name}の接続が切れています`:'';
   const key=[s.phase,s.turn,s.me.submitted,s.me.rematch,s.battleReady,s.me.started].join();
   if(s.phase!=='reveal'){showArena(false);builtKey=''}
-  if(['naming','judging','reveal'].includes(s.phase))setTheme(s.theme);else setTheme(null);
+  const hid=s.phase==='naming'&&(s.themeHidden||!s.theme); // 伏せられているお題は「？？？」で表示
+  if(hid)setTheme('？？？');else if(['naming','judging','reveal'].includes(s.phase))setTheme(s.theme);else setTheme(null);
+  const tn=$('#themeNote');tn.hidden=!(hid&&!s.me.submitted);tn.textContent=tn.hidden?'':pk('hid'+s.turn,TXT.hiddenNote);
   if(key===lastKey){const o=$('#oppStat');if(o)o.textContent=oppText(s);return}
   lastKey=key;
   if(s.phase==='lobby'){
@@ -395,7 +401,7 @@ function apply(s){
       const go=()=>{const v=inp.value.trim();if(!v||btn.disabled)return;myCard=v;send({type:'submit',cardName:v});btn.disabled=true};
       const btn=el('button',{class:'pri',onclick:go},'名乗る！');
       inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go()});
-      stage(el('p',{class:'shout'},'名乗れ！'),el('p',{class:'status'},pk('guide'+s.turn,TXT.guide),...(s.themeHidden?[el('br'),pk('hid'+s.turn,TXT.hiddenNote)]:[])),inp,el('div',{class:'row',style:'justify-content:center'},btn),el('p',{class:'status',id:'oppStat'},oppText(s)));
+      stage(el('p',{class:'shout'},'名乗れ！'),el('p',{class:'status'},pk('guide'+s.turn,TXT.guide)),inp,el('div',{class:'row',style:'justify-content:center'},btn),el('p',{class:'status',id:'oppStat'},oppText(s)));
       inp.focus();
     }
   }else if(s.phase==='judging'){
@@ -408,7 +414,7 @@ function apply(s){
     else ctl(wait_(pk('ready'+s.turn,TXT.readyWait)));
   }else if(s.phase==='finished'){
     const w=s.youWonGame;
-    const hist=el('ol',{class:'hist'},(s.history||[]).map(h=>el('li',{},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」　`,el('span',{class:h.youWon?'w':''},h.youWon?'勝ち':'負け'))));
+    const hist=el('ol',{class:'hist'},(s.history||[]).map(h=>el('li',{},el('small',{},`第${h.turn}戦　${h.theme}`),`「${h.me}」 vs 「${h.opp}」　`,el('span',{class:h.youWon?'w':'l'},h.youWon?'勝ち':'負け'))));
     stage(el('div',{class:'verdict'+(w?'':' lose')},pk(w?'finW':'finL',w?TXT.gameWin:TXT.gameLose)),hist,
       el('div',{class:'row',style:'justify-content:center'},el('button',{class:'pri',disabled:s.me.rematch?'':null,onclick:()=>send({type:'rematch'})},s.me.rematch?'相手を待っています…':'もう一度名乗り合う'),el('button',{class:'ghost',onclick:leave},'ホームへ')));
   }
