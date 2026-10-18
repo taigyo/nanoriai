@@ -91,15 +91,23 @@ export async function generateTheme(env, past = []) {
 }
 
 /* ② カード生成（カード名が決まった時点で、プレイヤーごとに別々に呼ばれる） */
+// 絵文字：AIの返事から絵文字だけを最大3個取り出す。1つも取れないときは予備から1つ
+const EMOJI_RE = /\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic})*/gu;
+const FALLBACK_EMOJIS = ['✨', '🎭', '🌀', '🎲', '🌟'];
+const pickEmoji = (v) => {
+  const m = typeof v === 'string' ? v.match(EMOJI_RE) : null;
+  return m && m.length ? m.slice(0, 3).join('') : pick(FALLBACK_EMOJIS);
+};
 export async function generateCard(env, name, theme) {
   const user = `プレイヤーが「${name}」と名乗りました。その名乗りの通りの存在（人・物・生き物・概念など何でもよい）を作ってください。
 - description: その存在の正体を3行程度（80〜120字）で説明する。名乗りの世界観をふくらませ、ユーモアや皮肉を入れる
+- emoji: その存在を表す絵文字を1〜3個（例: 🍬 / 🐱🔥 / 👑🌙✨）。絵文字以外の文字は入れない
 - params: 3〜5個。label(項目名・短く)とvalue(値・短く)。今回のお題「${theme}」に関わる項目を1つ以上含める。数字・単位・文字どれでもよく、突飛でよい
 
 例（名乗り「イモータルキャンディ」）:
-{"description":"溶けることを知らない、誰もが羨むキャンディ。舐めているといつの間にか舌のほうが溶けてゆく。いちご味。","params":[{"label":"値段","value":"103万円"},{"label":"寿命","value":"∞"},{"label":"味","value":"まあまあ"}]}
+{"description":"溶けることを知らない、誰もが羨むキャンディ。舐めているといつの間にか舌のほうが溶けてゆく。いちご味。","emoji":"🍬⏳","params":[{"label":"値段","value":"103万円"},{"label":"寿命","value":"∞"},{"label":"味","value":"まあまあ"}]}
 
-出力形式: {"description":"...","params":[{"label":"...","value":"..."}]}`;
+出力形式: {"description":"...","emoji":"...","params":[{"label":"...","value":"..."}]}`;
 
   const r = await chatJson(env, user, { temperature: 0.9, max_tokens: 500 }, (d) => {
     const description = str(d.description, 200);
@@ -108,7 +116,7 @@ export async function generateCard(env, name, theme) {
       .map((p) => ({ label: str(p?.label, 10), value: str(String(p?.value ?? ''), 20) }))
       .filter((p) => p.label && p.value)
       .slice(0, 5);
-    return params.length >= 3 ? { description, params, weak: false } : null;
+    return params.length >= 3 ? { description, emoji: pickEmoji(d.emoji), params, weak: false } : null;
   });
   return r || weakCard(name);
 }
@@ -134,9 +142,11 @@ const WEAK_PARAMS = [
   [['強さ', '測定不能（弱すぎて）'], ['運', '普通'], ['華', 'なし']],
   [['迫力', 'そよ風'], ['頼りがい', 'ふにゃふにゃ'], ['目立ち度', '背景']],
 ];
+const WEAK_EMOJIS = ['😶', '💤', '🍃', '🥔', '🪨', '🐌'];
 function weakCard(name) {
   return {
     description: pick(WEAK_DESCS)(name),
+    emoji: pick(WEAK_EMOJIS),
     params: pick(WEAK_PARAMS).map(([label, value]) => ({ label, value })),
     weak: true,
   };
