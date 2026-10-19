@@ -178,10 +178,10 @@ main.shake-big{--sh:12px;animation:shake .75s}
 }
 @keyframes bannerText{from{transform:rotate(-3deg) scale(1) skew(-4deg)}to{transform:rotate(2deg) scale(1.1) skew(5deg)}}
 #banner{--bw:min(88vw,560px);position:fixed;inset:0 0 14vh 0;margin:auto;width:var(--bw);height:calc(var(--bw)*.75);z-index:25;display:grid;place-items:center;pointer-events:none;background:url(/img/burst.png) center/100% 100% no-repeat;filter:drop-shadow(0 6px 0 rgba(40,38,56,.25));animation:burstIn 2.2s both}
-#banner span{display:block;padding:0 14%;text-align:center;color:var(--pink);font:400 clamp(2.2rem,10vw,4.6rem)/1.1 var(--disp);-webkit-text-stroke:.12em var(--ink);paint-order:stroke fill;animation:bannerText .55s ease-in-out infinite alternate}
+#banner span{display:block;white-space:pre-line;padding:0 14%;text-align:center;color:var(--pink);font:400 clamp(2.2rem,10vw,4.6rem)/1.1 var(--disp);-webkit-text-stroke:.12em var(--ink);paint-order:stroke fill;animation:bannerText .55s ease-in-out infinite alternate}
 #banner.dbl{--bw:min(94vw,680px);--amp:1.6}
 #banner.dbl span{font-size:clamp(2rem,9vw,4rem)}
-#banner.opp span{color:var(--sky);font-size:clamp(1.8rem,8vw,3.4rem)}
+#banner.opp span{color:var(--sky);font-size:clamp(2rem,9vw,3.8rem)}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}
 #reachGlow{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;box-shadow:inset 0 0 70px 10px rgba(255,60,120,.5);transition:opacity .08s}
 html[data-reach] #reachGlow{opacity:calc(.3 + var(--beat,0)*.7)}
@@ -657,12 +657,12 @@ const SE_FILES={
   hover:['bubblehover1','bubblehover2','bubblehover3','bubblehover4'],
   click:['bubblepop1','bubblepop2','bubblepop3','click1'],
   round:['drum1','drum2','drum3','drum4'],
-  lose:['lose1','lose2'],
-  win:['win1','win2'],
+  lose:['lose1','lose2','sad1','sad2','sad3'],
+  win:['win1','win2','clap2','happy1','happy2'],
   slide:['slide1','slide2','woosh1','woosh2','woosh3','woosh4','woosh5']
 };
 const SE_GAIN={hover:.45,click:.7,round:1,lose:.8,win:1,slide:.9};
-const SE_ADJ={woosh5:2.5,drum2:1.25,win2:1.6};
+const SE_ADJ={woosh5:2.5,drum2:1.25,win2:1.6,clap2:3.2,happy1:.85,happy2:1.25,sad1:1.2,sad3:.9};
 const seRaw={},seBuf={},seLast={};
 const seNames=Object.values(SE_FILES).flat();
 // 読み込みはページが落ち着いてから（BGMやフォントの邪魔をしない）。取得だけ先にして、デコードは AudioContext ができてから
@@ -754,7 +754,7 @@ requestAnimationFrame(beatTick);
 const SPEAK_RATE_PC=2,SPEAK_RATE_TOUCH=1.4; // 読み上げ速度（1が標準）。スマホは速く聞こえるため別設定
 const SPEAK_VOL_DEF=100; // 読み上げ音量の初期値（0〜100）
 const speakRate=()=>touch?SPEAK_RATE_TOUCH:SPEAK_RATE_PC;
-const NAME_LIMITS=[10,6,3]; // 名乗りの文字数の上限（★0個・1個・2個のとき）。全部10にすれば無効
+const NAME_LIMITS=[10,7,5]; // 名乗りの文字数の上限（★0個・1個・2個のとき）。全部10にすれば無効
 const nameLimit=n=>NAME_LIMITS[Math.min(n,NAME_LIMITS.length-1)];
 let speakOn=!!LS.get('speak',true),speakVol=LS.get('speakVol',SPEAK_VOL_DEF),speechFails=0,unlocked=false; // speakOn=アイコンのオンオフ / speakVol=スライダーの値
 const canSpeak='speechSynthesis' in window;
@@ -791,12 +791,11 @@ applySpeak();
 /* ---- 演出：リーチ・画面揺れ・紙吹雪 ----
    リーチ = どちらかが「あと★1つで勝ち」の間。BGMを少し速め（REACH_RATE）、背景図形のサイズとダンス・バトルテーマのダンスを大きくし（REACH_MUL／ダブルリーチは DOUBLE_MUL）、画面の縁を光らせる。切り替わりで帯を出す
    決着の画面揺れ = バトルの最後の審判の行で小さく、ゲームが決まるときは大きく。紙吹雪は勝ったとき */
-const calm=matchMedia('(prefers-reduced-motion: reduce)').matches; // 「視差効果を減らす」設定のときは、揺れと紙吹雪を出さない
 let bannerTO=0;
 function showBanner(t){
   const b=$('#banner');
   b.className=t==='ダブルリーチ！'?'dbl':t.startsWith('あいて')?'opp':'';
-  $('#bannerText').textContent=t;
+  $('#bannerText').textContent=t==='あいてがリーチ！'?'あいてが\nリーチ！':t; // 「あいてが」と「リーチ！」で改行
   b.hidden=false;b.style.animation='none';b.offsetWidth;b.style.animation='';
   clearTimeout(bannerTO);bannerTO=setTimeout(()=>{b.hidden=true},2300); // CSS の burstIn（2.2s）に合わせる
 }
@@ -817,7 +816,6 @@ function setReach(txt){
   if(txt){showBanner(txt);playSE('round')}else $('#banner').hidden=true;
 }
 function shake(big){
-  if(calm)return;
   const m=$('main');m.classList.remove('shake','shake-big');m.offsetWidth;
   m.classList.add(big?'shake-big':'shake');
   setTimeout(()=>m.classList.remove('shake','shake-big'),big?800:450);
@@ -825,7 +823,6 @@ function shake(big){
 const CF_COLORS=['#ff6fae','#ffd23f','#5ecbff','#8be04e','#b28dff','#ff8a3d'];
 let cfP=[],cfRun=false;
 function confetti(n=80){
-  if(calm)return;
   const cv=$('#confetti');cv.width=innerWidth;cv.height=innerHeight;
   for(let i=0;i<n;i++)cfP.push({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*.5,vx:(Math.random()-.5)*3,vy:2+Math.random()*3.5,w:7+Math.random()*7,h:4+Math.random()*6,r:Math.random()*6.28,vr:(Math.random()-.5)*.35,c:CF_COLORS[i%CF_COLORS.length]});
   if(!cfRun){cfRun=true;requestAnimationFrame(cfTick)}
@@ -852,9 +849,9 @@ const q=new URLSearchParams(location.search).get('room');
 if(q){$('#joinCode').value=q.toUpperCase();show('setup')}else show('home');
 
 /* ---- 通信 ---- */
-let finSE=false,histTok=0;
+let finSE=false,histTok=0,seOppKey='',seReadyTurn=0; // seOppKey / seReadyTurn = 「相手が名乗り終えた」「勝負ボタンが出た」SEを、1ターンに1回だけ鳴らす印
 let ws,code,S=null,pending=null,anim=false,skip=false,leaving=false,retry=0,myCard='',builtKey='',names={me:'',opp:''},disp={me:'',opp:''},shown={me:0,opp:0},lastKey=''; // disp = 上の名前欄に出す名前（名乗りが出そろった時点の名乗りに差し替わる。空なら通信で届いた名前）
-function connect(c){setReach('');code=c;$('#roomId').innerHTML='合言葉：<b>'+c+'</b>';leaving=false;S=null;finSE=false;histTok++;drumKey='';pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};disp={me:'',opp:''};showArena(false);$('#theme').hidden=true;$('#themeNote').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
+function connect(c){setReach('');seOppKey='';seReadyTurn=0;code=c;$('#roomId').innerHTML='合言葉：<b>'+c+'</b>';leaving=false;S=null;finSE=false;histTok++;drumKey='';pending=null;anim=false;myCard='';builtKey='';lastKey='';shown={me:0,opp:0};disp={me:'',opp:''};showArena(false);$('#theme').hidden=true;$('#themeNote').hidden=true;drawBars();pc={};stage(wait_(pk('conn',TXT.connecting)));show('battle');open()}
 function open(){
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/'+code);
   ws.onopen=()=>{retry=0;$('#conn').textContent='';send({type:'join',pid,name:getName()})};
@@ -914,8 +911,12 @@ const nmEl=(name,c,meta)=>el('article',{class:'nm'+(c.weak?' weak':'')},
 const oppName=s=>disp.opp||s.opponent.name;
 const oppText=s=>s.opponent?pk('opp'+s.turn+(s.opponent.submitted?'D':'T'),s.opponent.submitted?TXT.oppDone:TXT.oppThinking).replaceAll('{name}',oppName(s)):'';
 function apply(s){
+  const was=S&&S.phase;
   S=s;
   setReach(reachState(s));
+  if(was==='lobby'&&s.phase!=='lobby')playSE('click'); // 相手が入ってきた
+  if(s.phase==='finished'||s.phase==='lobby'){seOppKey='';seReadyTurn=0}
+  if(s.phase==='naming'&&s.opponent&&s.opponent.submitted&&!s.me.submitted&&seOppKey!==String(s.turn)){seOppKey=String(s.turn);playSE('hover')} // 相手が先に名乗り終えた
   if(!s.opponent||s.phase==='lobby')disp.opp=''; // 相手がいなくなったら、前の相手の名乗りは忘れる
   $('#leaveRow').hidden=s.phase==='finished';
   if(s.phase==='theming')pc={};
@@ -1041,7 +1042,10 @@ function revealCtl(){
     ctl(el('button',{class:'sm',onclick:()=>{readSkip=true;if(canSpeak)try{speechSynthesis.cancel()}catch{}}},'読み飛ばす'),
       s.battleReady?null:wait_(pk('battle'+s.turn,TXT.battleWait)));
   }else if(!s.battleReady)ctl(wait_(pk('battle'+s.turn,TXT.battleWait)));
-  else if(!s.me.started)ctl(el('button',{class:'pri',onclick:e=>{e.target.disabled=true;send({type:'start'})}},'いざ、勝負！'));
+  else if(!s.me.started){
+    if(seReadyTurn!==s.turn){seReadyTurn=s.turn;playSE('click')} // 勝負ボタンが出た合図
+    ctl(el('button',{class:'pri',onclick:e=>{e.target.disabled=true;send({type:'start'})}},'いざ、勝負！'));
+  }
   else ctl(wait_(pk('ready'+s.turn,TXT.readyWait)));
 }
 // 名乗りが出そろった瞬間：上の名前欄を今の名乗りに差し替え、自分の名前（ホームの名札・次回の入室名）も同じ名乗りにする。最後に名乗った名前が残る
@@ -1062,6 +1066,7 @@ function buildArena(c,vs=false){
   $('#vs').replaceChildren(el('div',{class:'vsn me',id:'vsMe'},c.me.cardName,emo(c.me)),el('div',{class:'vsx'},'VS'),el('div',{class:'vsn opp',id:'vsOpp'},c.opponent.cardName,emo(c.opponent)));
   showVs(vs);
   showArena(true);
+  if(vs){playSE('slide');setTimeout(()=>playSE('slide'),180)} // 名乗りが左右から滑り込む動きに合わせる
 }
 function addMsg(l){
   const log=$('#log');
@@ -1074,6 +1079,13 @@ function addMsg(l){
     setTimeout(()=>log.scrollTo({top:log.scrollHeight,behavior:'smooth'}),1000);
   }else log.scrollTop=log.scrollHeight; // 下に流れる。スクロール不要
 }
+// 結果発表（審判の最後の行が出る瞬間）に、勝敗の帯・★の獲得・SE・画面揺れ・紙吹雪をまとめて出す
+function showTurnResult(m){
+  playSE(m.youWon?'win':'lose');
+  shake(m.gameOver);if(m.youWon)confetti(m.gameOver?120:40);
+  ctl(el('div',{class:'verdict'+(m.youWon?'':' lose')},rpick(m.youWon?TXT.turnWin:TXT.turnLose)));
+  drawBars(m.stars.me,m.stars.opponent);
+}
 async function playResult(m){
   anim=true;skip=false;lastKey='';
   stopReading();
@@ -1084,20 +1096,21 @@ async function playResult(m){
   ctl(el('button',{class:'sm',onclick:()=>skip=true},'スキップ'));
   const my=++playTok,abort=()=>skip||my!==playTok;
   await wait(700);
-  for(const l of m.log){
+  const last=m.log.length-1;let shownResult=false;
+  for(let i=0;i<=last;i++){
     if(my!==playTok)return; // 場を去った・別のゲームに移った
+    const l=m.log[i];
     addMsg(l);
+    if(i===last){showTurnResult(m);shownResult=true} // 最後の行（結果発表）と同時に
     const ok=await say(l.text,abort); // 読み終わってから次の行へ
-    if(ok)await wait(250);else await wait(1800); // 読み上げできないときは従来どおり一定間隔
+    if(i<last){if(ok)await wait(250);else await wait(1800)} // 読み上げできないときは従来どおり一定間隔
   }
   if(my!==playTok)return;
-  shake(m.gameOver);if(m.youWon)confetti(m.gameOver?120:40); // 審判の最後の行が出た瞬間
-  ctl(el('div',{class:'verdict'+(m.youWon?'':' lose')},rpick(m.youWon?TXT.turnWin:TXT.turnLose)),
-    el('button',{class:'pri',onclick:()=>{
-      anim=false;const p=pending;pending=null;
-      if(p)apply(p);else if(m.gameOver)apply({...S,phase:'finished',youWonGame:m.youWon,me:{...S.me,rematch:false}});else apply(S);
-    }},m.gameOver?'結果へ':'次の名乗りへ'));
-  drawBars(m.stars.me,m.stars.opponent);
+  if(!shownResult)showTurnResult(m);
+  $('#ctl').append(el('button',{class:'pri',onclick:()=>{ // 読み終わってから、次へ進むボタンを出す
+    anim=false;const p=pending;pending=null;
+    if(p)apply(p);else if(m.gameOver)apply({...S,phase:'finished',youWonGame:m.youWon,me:{...S.me,rematch:false}});else apply(S);
+  }},m.gameOver?'結果へ':'次の名乗りへ'));
   saveCard(m);
 }
 
